@@ -123,6 +123,21 @@ void parse_args(int argc, char *argv[], struct server_app *app)
     }
 }
 
+void replace_with_spaces(char *str) {
+    char *src = str;
+    char *dst = str;
+    
+    while (*src) {
+        if (strncmp(src, "%20", 3) == 0) {
+            *dst++ = ' ';  // Replace "%20" with space
+            src += 3;      // Move past "%20"
+        } else {
+            *dst++ = *src++;  // Copy character
+        }
+    }
+    *dst = '\0';  // Null-terminate the modified string
+}
+
 void handle_request(struct server_app *app, int client_socket) {
     char buffer[BUFFER_SIZE];
     ssize_t bytes_read;
@@ -166,6 +181,8 @@ void handle_request(struct server_app *app, int client_socket) {
     if (strcmp(path, "/") == 0) {
         strcpy(path, "index.html");
     }
+
+    replace_with_spaces(path_without_slash);
 
     // Print the parsed fields (for debugging purposes)
     printf("Method: %s\n", method);
