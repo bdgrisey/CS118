@@ -145,7 +145,48 @@ void handle_request(struct server_app *app, int client_socket) {
     // TODO: Parse the header and extract essential fields, e.g. file name
     // Hint: if the requested path is "/" (root), default to index.html
     char file_name[] = "index.html";
+    // Parse using strtoc() function to split request on delimiters " " and "\n"
+    // ex header: GET /somedir/page.html HTTP/1.1\n --> extract middle arg/path
+    // strtoc() to get collection, if length three then middle is path, elif length 2 null arg (/ is path), else need to concat 
+    char* token = strtok(request, "\n"); // strip first line of request
+    token = strtok(request, " ");       // split at first space
+    char** prev_tokens = malloc(strlen(buffer) + 1);         // list of all tokens in first line
+    int token_cnt = 0;
+    while(token != 0)
+    {
+        prev_tokens[token_cnt] = token;
+        token = strtok(NULL, " \n");
+        token_cnt++;
+    }
 
+    char* file_path = malloc(strlen(buffer) + 1);
+    if(token_cnt == 3)
+    {
+        //idx 1 is path
+        strcpy(file_path, prev_tokens[1]);
+    }
+    else if(token_cnt == 2)
+    {
+        //root
+        strcpy(file_path, "/");
+    }
+    else if(token_cnt > 3)
+    {
+        //concat
+        strcpy(file_path, prev_tokens[1]);
+        for(int i = 2; i < token_cnt - 1; i++)
+        {
+            strcat(file_path, " ");
+            strcat(file_path, prev_tokens[i]);
+        }
+    }
+    else
+    {
+        //error
+        exit(1);
+    }
+
+    //TODO: FREE ALL MALLOCED MEMORY
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
     // if (need_proxy(...)) {
