@@ -152,16 +152,15 @@ void handle_request(struct server_app *app, int client_socket) {
     char method[10]; // Assuming the method won't exceed 10 characters
     char path[BUFFER_SIZE];
     char http_version[20]; // Assuming the HTTP version won't exceed 20 characters
-    char host[BUFFER_SIZE];
-    char user_agent[BUFFER_SIZE];
 
     // Use sscanf to parse the request line
     if (sscanf(buffer, "%9s %1023s %19s", method, path, http_version) != 3) {
         // Invalid request format
         return;
     }
-    sscanf(buffer, "Host: %1023s", host);
-    sscanf(buffer, "User-Agent: %[^\r\n]", user_agent);
+
+    char path_without_slash[strlen(path)]; // Create a new string
+    strcpy(path_without_slash, path + 1); // Copy path without the first character
 
     // If the requested path is "/", default to index.html
     if (strcmp(path, "/") == 0) {
@@ -172,8 +171,6 @@ void handle_request(struct server_app *app, int client_socket) {
     printf("Method: %s\n", method);
     printf("Path: %s\n", path);
     printf("HTTP Version: %s\n", http_version);
-    printf("Host: %s\n", host);
-    printf("User-Agent: %s\n", user_agent);
     printf("-------");
 
     // TODO: Implement proxy and call the function under condition
