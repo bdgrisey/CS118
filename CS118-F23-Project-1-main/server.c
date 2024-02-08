@@ -157,6 +157,8 @@ void handle_request(struct server_app *app, int client_socket) {
         // Invalid request format
         return;
     }
+    sscanf(buffer, "Host: %1023s", host);
+    sscanf(buffer, "User-Agent: %[^\r\n]", user_agent);
 
     // If the requested path is "/", default to index.html
     if (strcmp(path, "/") == 0) {
@@ -167,6 +169,8 @@ void handle_request(struct server_app *app, int client_socket) {
     printf("Method: %s\n", method);
     printf("Path: %s\n", path);
     printf("HTTP Version: %s\n", http_version);
+    printf("Host: %s\n", host);
+    printf("User-Agent: %s\n", user_agent);
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
