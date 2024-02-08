@@ -272,7 +272,7 @@ void serve_local_file(int client_socket, const char *path) {
         send(client_socket, headers, strlen(headers), 0);
     } else if (strcmp(file_type, "jpg") == 0) {
         sprintf(headers, "HTTP/1.1 200 OK\r\n"
-                        "Content-Type: text/plain\r\n"
+                        "Content-Type: image/jpeg\r\n"
                         "Content-Length: %ld\r\n"
                         "\r\n", content_length);
 
