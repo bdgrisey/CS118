@@ -145,40 +145,29 @@ void handle_request(struct server_app *app, int client_socket) {
     // TODO: Parse the header and extract essential fields, e.g. file name
     // Hint: if the requested path is "/" (root), default to index.html
     char file_name[] = "index.html";
-    // printing the request
     printf("Received request:\n%s\n", buffer);
+    
+    // Parse the HTTP request to extract essential fields
+    char method[10]; // Assuming the method won't exceed 10 characters
+    char path[BUFFER_SIZE];
+    char http_version[20]; // Assuming the HTTP version won't exceed 20 characters
 
-    // Parse the HTTP request to extract the file path
-    char *path_start = strchr(buffer, ' '); // Find the first space
-    if (path_start == NULL)
-        return; // Invalid request
-    path_start++; // Move to the next character
-
-    // Find the end of the file path
-    char *path_end = strchr(path_start, ' ');
-    if (path_end == NULL)
-        return; // Invalid request
-
-    // Calculate the length of the file path
-    size_t path_length = path_end - path_start;
-
-    // Allocate memory for the file name
-    char *file_name = malloc(path_length + 1);
-    if (file_name == NULL) {
-        perror("Memory allocation failed");
+    // Use sscanf to parse the request line
+    if (sscanf(buffer, "%9s %1023s %19s", method, path, http_version) != 3) {
+        // Invalid request format
         return;
     }
 
-    // Copy the file path into the file_name variable
-    strncpy(file_name, path_start, path_length);
-    file_name[path_length] = '\0'; // Null-terminate the string
-
     // If the requested path is "/", default to index.html
-    if (strcmp(file_name, "/") == 0) {
-        free(file_name);
-        file_name = strdup("index.html");
+    if (strcmp(path, "/") == 0) {
+        strcpy(path, "index.html");
     }
-    
+
+    // Print the parsed fields (for debugging purposes)
+    printf("Method: %s\n", method);
+    printf("Path: %s\n", path);
+    printf("HTTP Version: %s\n", http_version);
+
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
     // if (need_proxy(...)) {
