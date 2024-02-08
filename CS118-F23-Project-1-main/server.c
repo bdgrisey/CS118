@@ -146,7 +146,7 @@ void handle_request(struct server_app *app, int client_socket) {
     // Hint: if the requested path is "/" (root), default to index.html
     char file_name[] = "test.txt";
     printf("Received request:\n%s\n", buffer);
-    printf("");
+    printf("-------");
     
     // Parse the HTTP request to extract essential fields
     char method[10]; // Assuming the method won't exceed 10 characters
@@ -174,7 +174,7 @@ void handle_request(struct server_app *app, int client_socket) {
     printf("HTTP Version: %s\n", http_version);
     printf("Host: %s\n", host);
     printf("User-Agent: %s\n", user_agent);
-    printf("");
+    printf("-------");
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
