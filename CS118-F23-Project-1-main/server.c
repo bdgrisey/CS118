@@ -237,9 +237,9 @@ void serve_local_file(int client_socket, const char *path) {
         // File not found, send a 404 response
         char response[] = "HTTP/1.1 404 Not Found\r\n"
                           "Content-Type: text/plain\r\n"
-                          "Content-Length: 13\r\n"
+                          "Content-Length: 14\r\n"
                           "\r\n"
-                          "File not foundd";
+                          "File not found";
         send(client_socket, response, strlen(response), 0);
         return;
     }
