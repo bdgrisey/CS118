@@ -123,7 +123,8 @@ void parse_args(int argc, char *argv[], struct server_app *app)
     }
 }
 
-void replace_with_spaces(char *str) {
+// Personal Helper Function
+void replace_URL_encodings(char *str) {
     char *src = str;
     char *dst = str;
     
@@ -140,6 +141,15 @@ void replace_with_spaces(char *str) {
         }
     }
     *dst = '\0';  // Null-terminate the modified string
+}
+
+// Personal Helper Function
+const char *extract_file_type(const char *path) {
+    const char *file_type = strrchr(path, '.'); // Find last occurrence of '.'
+    if (file_type == NULL) {
+        return ""; // No file extension found
+    }
+    return file_type + 1; // Return the substring following the dot
 }
 
 void handle_request(struct server_app *app, int client_socket) {
@@ -186,12 +196,13 @@ void handle_request(struct server_app *app, int client_socket) {
         strcpy(path, "index.html");
     }
 
-    replace_with_spaces(path_without_slash);
+    replace_URL_encodings(path_without_slash);
 
     // Print the parsed fields (for debugging purposes)
     printf("Method: %s\n", method);
     printf("Path w/o slash: %s\n", path_without_slash);
     printf("HTTP Version: %s\n", http_version);
+    printf("File type: %s\n", extract_file_type(path_without_slash));
     printf("-------");
 
     // TODO: Implement proxy and call the function under condition
