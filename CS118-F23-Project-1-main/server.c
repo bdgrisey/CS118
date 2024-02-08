@@ -144,7 +144,7 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Parse the header and extract essential fields, e.g. file name
     // Hint: if the requested path is "/" (root), default to index.html
-    char file_name[] = "index.html";
+    char file_name[] = "tree.jpg";
     printf("Received request:\n%s\n", buffer);
     
     // Parse the HTTP request to extract essential fields
@@ -215,7 +215,7 @@ void serve_local_file(int client_socket, const char *path) {
     // Construct response headers
     char headers[1024];
     sprintf(headers, "HTTP/1.1 200 OK\r\n"
-                     "Content-Type: text/html\r\n"
+                     "Content-Type: image/jpeg\r\n"
                      "Content-Length: %ld\r\n"
                      "\r\n", content_length);
 
