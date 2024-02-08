@@ -131,7 +131,11 @@ void replace_with_spaces(char *str) {
         if (strncmp(src, "%20", 3) == 0) {
             *dst++ = ' ';  // Replace "%20" with space
             src += 3;      // Move past "%20"
-        } else {
+        } else if (strncmp(src, "%25", 3) == 0) {
+            *dst++ = '%';  // Replace "%25" with '%'
+            src += 3;      // Move past "%25'
+        }
+        else {
             *dst++ = *src++;  // Copy character
         }
     }
