@@ -169,7 +169,7 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // Print the parsed fields (for debugging purposes)
     printf("Method: %s\n", method);
-    printf("Path: %s\n", path);
+    printf("Path w/o slash: %s\n", path_without_slash);
     printf("HTTP Version: %s\n", http_version);
     printf("-------");
 
