@@ -179,7 +179,7 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Parse the header and extract essential fields, e.g. file name
     // Hint: if the requested path is "/" (root), default to index.html
-    char file_name[] = "test.txt";
+    // char file_name[] = "test.txt";
     printf("Received request:\n%s\n", buffer);
     printf("-------");
     
@@ -216,7 +216,8 @@ void handle_request(struct server_app *app, int client_socket) {
     // if (need_proxy(...)) {
     //    proxy_remote_file(app, client_socket, file_name);
     // } else {
-    serve_local_file(client_socket, file_name);
+    // NEED TO REPLACE "path_without_slash" WITH "file_name"
+    serve_local_file(client_socket, path_without_slash);
     //}
 }
 
