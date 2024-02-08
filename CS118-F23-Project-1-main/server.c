@@ -127,31 +127,34 @@ void parse_args(int argc, char *argv[], struct server_app *app)
 /// Helper functions Start ///
 //////////////////////////////
 
+// Replaces all instances of '%20' with a space and all instances of '%25' with '%'
 void replace_URL_encodings(char *str) {
     char *src = str;
     char *dst = str;
     
+    // Idea: uses two pointer method of traversing through string and replacing URL encodings with valid equivalents
     while (*src) {
         if (strncmp(src, "%20", 3) == 0) {
-            *dst++ = ' ';  // Replace "%20" with space
-            src += 3;      // Move past "%20"
+            *dst++ = ' ';
+            src += 3;
         } else if (strncmp(src, "%25", 3) == 0) {
-            *dst++ = '%';  // Replace "%25" with '%'
-            src += 3;      // Move past "%25'
+            *dst++ = '%';
+            src += 3;
         }
         else {
-            *dst++ = *src++;  // Copy character
+            *dst++ = *src++;
         }
     }
-    *dst = '\0';  // Null-terminate the modified string
+    *dst = '\0';
 }
 
+// Finds last occurence of '.' and gets the file type (without the '.')
 const char *extract_file_type(const char *path) {
-    const char *file_type = strrchr(path, '.'); // Find last occurrence of '.'
+    const char *file_type = strrchr(path, '.');
     if (file_type == NULL) {
-        return ""; // No file extension found
+        return "";
     }
-    return file_type + 1; // Return the substring following the dot
+    return file_type + 1;
 }
 
 ////////////////////////////
@@ -179,23 +182,25 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Parse the header and extract essential fields, e.g. file name
     // Hint: if the requested path is "/" (root), default to index.html
-    // char file_name[] = "test.txt";
-    printf("Received request:\n%s\n", buffer);
-    printf("-------");
     
-    // Parse the HTTP request to extract essential fields
-    char method[10]; // Assuming the method won't exceed 10 characters
+    // char file_name[] = "test.txt";
+    // printf("Received request:\n%s\n", buffer);
+    // printf("-------");
+    
+    // Variables to hold first parts of the request header
+    char method[10];
     char path[BUFFER_SIZE];
-    char http_version[20]; // Assuming the HTTP version won't exceed 20 characters
+    char http_version[20];
 
-    // Use sscanf to parse the request line
+    // Use sscanf to parse the first request line
     if (sscanf(buffer, "%9s %1023s %19s", method, path, http_version) != 3) {
         // Invalid request format
         return;
     }
 
-    char path_without_slash[BUFFER_SIZE]; // Create a new string
-    strcpy(path_without_slash, path + 1); // Copy path without the first character
+    // Getting path without slash ('/')
+    char path_without_slash[BUFFER_SIZE];
+    strcpy(path_without_slash, path + 1);
 
     // If the requested path is "/", default to index.html
     if (strcmp(path, "/") == 0) {
@@ -209,14 +214,15 @@ void handle_request(struct server_app *app, int client_socket) {
     printf("Path w/o slash: %s\n", path_without_slash);
     printf("HTTP Version: %s\n", http_version);
     printf("File type: %s\n", extract_file_type(path_without_slash));
-    printf("-------");
+    //printf("-------");
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
     // if (need_proxy(...)) {
     //    proxy_remote_file(app, client_socket, file_name);
     // } else {
-    // NEED TO REPLACE "path_without_slash" WITH "file_name"
+        
+    // may need to replace "path_without_slash" with "file_name"
     serve_local_file(client_socket, path_without_slash);
     //}
 }
@@ -254,6 +260,7 @@ void serve_local_file(int client_socket, const char *path) {
 
     // Construct response headers
     char headers[1024];
+    // If requesting a txt file
     if (strcmp(file_type, "txt") == 0) {
         sprintf(headers, "HTTP/1.1 200 OK\r\n"
                         "Content-Type: text/plain\r\n"
@@ -262,6 +269,7 @@ void serve_local_file(int client_socket, const char *path) {
 
         // Send response headers
         send(client_socket, headers, strlen(headers), 0);
+    // If requesting a html file
     } else if (strcmp(file_type, "html") == 0) {
         sprintf(headers, "HTTP/1.1 200 OK\r\n"
                         "Content-Type: text/html\r\n"
@@ -270,6 +278,7 @@ void serve_local_file(int client_socket, const char *path) {
 
         // Send response headers
         send(client_socket, headers, strlen(headers), 0);
+    // If requesting a jpg file
     } else if (strcmp(file_type, "jpg") == 0) {
         sprintf(headers, "HTTP/1.1 200 OK\r\n"
                         "Content-Type: image/jpeg\r\n"
@@ -278,6 +287,7 @@ void serve_local_file(int client_socket, const char *path) {
 
         // Send response headers
         send(client_socket, headers, strlen(headers), 0);
+    // Everything else, just send the binaries
     } else {
         sprintf(headers, "HTTP/1.1 200 OK\r\n"
                         "Content-Type: application/octet-stream\r\n"
