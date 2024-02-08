@@ -250,7 +250,7 @@ void serve_local_file(int client_socket, const char *path) {
     fseek(file, 0, SEEK_SET);
 
     // Determine file type of the file
-    char file_type[BUFFER_SIZE] = extract_file_type(path_without_slash);
+    char file_type[BUFFER_SIZE] = extract_file_type(path);
 
     // Construct response headers
     char headers[1024];
