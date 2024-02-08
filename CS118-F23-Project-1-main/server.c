@@ -232,7 +232,6 @@ void serve_local_file(int client_socket, const char *path) {
     // * Also send file content
     // (When the requested file does not exist):
     // * Generate a correct response
-
     FILE *file = fopen(path, "r");
     if (file == NULL) {
         // File not found, send a 404 response
@@ -250,15 +249,44 @@ void serve_local_file(int client_socket, const char *path) {
     long content_length = ftell(file);
     fseek(file, 0, SEEK_SET);
 
+    // Determine file type of the file
+    char file_type[BUFFER_SIZE] = extract_file_type(path_without_slash);
+
     // Construct response headers
     char headers[1024];
-    sprintf(headers, "HTTP/1.1 200 OK\r\n"
-                     "Content-Type: text/plain\r\n"
-                     "Content-Length: %ld\r\n"
-                     "\r\n", content_length);
+    if (strcmp(file_type, "txt") == 0) {
+        sprintf(headers, "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: %ld\r\n"
+                        "\r\n", content_length);
 
-    // Send response headers
-    send(client_socket, headers, strlen(headers), 0);
+        // Send response headers
+        send(client_socket, headers, strlen(headers), 0);
+    } else if (strcmp(file_type, "html") == 0) {
+        sprintf(headers, "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/html\r\n"
+                        "Content-Length: %ld\r\n"
+                        "\r\n", content_length);
+
+        // Send response headers
+        send(client_socket, headers, strlen(headers), 0);
+    } else if (strcmp(file_type, "jpg") == 0) {
+        sprintf(headers, "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: %ld\r\n"
+                        "\r\n", content_length);
+
+        // Send response headers
+        send(client_socket, headers, strlen(headers), 0);
+    } else {
+        sprintf(headers, "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: application/octet-stream\r\n"
+                        "Content-Length: %ld\r\n"
+                        "\r\n", content_length);
+
+        // Send response headers
+        send(client_socket, headers, strlen(headers), 0);
+    }
 
     // Send file content
     char buffer[1024];
