@@ -195,13 +195,42 @@ void serve_local_file(int client_socket, const char *path) {
     // (When the requested file does not exist):
     // * Generate a correct response
 
-    char response[] = "HTTP/1.0 200 OK\r\n"
-                      "Content-Type: text/plain; charset=UTF-8\r\n"
-                      "Content-Length: 15\r\n"
-                      "\r\n"
-                      "Sample response";
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        // File not found, send a 404 response
+        char response[] = "HTTP/1.1 404 Not Found\r\n"
+                          "Content-Type: text/plain\r\n"
+                          "Content-Length: 13\r\n"
+                          "\r\n"
+                          "File not found";
+        send(client_socket, response, strlen(response), 0);
+        return;
+    }
 
-    send(client_socket, response, strlen(response), 0);
+    // File found, read its contents to determine content length
+    fseek(file, 0, SEEK_END);
+    long content_length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Construct response headers
+    char headers[1024];
+    sprintf(headers, "HTTP/1.1 200 OK\r\n"
+                     "Content-Type: text/html\r\n"
+                     "Content-Length: %ld\r\n"
+                     "\r\n", content_length);
+
+    // Send response headers
+    send(client_socket, headers, strlen(headers), 0);
+
+    // Send file content
+    char buffer[1024];
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        send(client_socket, buffer, bytes_read, 0);
+    }
+
+    // Close the file
+    fclose(file);
 }
 
 void proxy_remote_file(struct server_app *app, int client_socket, const char *request) {
