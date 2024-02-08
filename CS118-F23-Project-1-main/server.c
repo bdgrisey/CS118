@@ -123,7 +123,10 @@ void parse_args(int argc, char *argv[], struct server_app *app)
     }
 }
 
-// Personal Helper Function
+//////////////////////////////
+/// Helper functions Start ///
+//////////////////////////////
+
 void replace_URL_encodings(char *str) {
     char *src = str;
     char *dst = str;
@@ -143,7 +146,6 @@ void replace_URL_encodings(char *str) {
     *dst = '\0';  // Null-terminate the modified string
 }
 
-// Personal Helper Function
 const char *extract_file_type(const char *path) {
     const char *file_type = strrchr(path, '.'); // Find last occurrence of '.'
     if (file_type == NULL) {
@@ -151,6 +153,10 @@ const char *extract_file_type(const char *path) {
     }
     return file_type + 1; // Return the substring following the dot
 }
+
+////////////////////////////
+/// Helper functions End ///
+////////////////////////////
 
 void handle_request(struct server_app *app, int client_socket) {
     char buffer[BUFFER_SIZE];
@@ -188,12 +194,12 @@ void handle_request(struct server_app *app, int client_socket) {
         return;
     }
 
-    char path_without_slash[strlen(path)]; // Create a new string
+    char path_without_slash[BUFFER_SIZE]; // Create a new string
     strcpy(path_without_slash, path + 1); // Copy path without the first character
 
     // If the requested path is "/", default to index.html
     if (strcmp(path, "/") == 0) {
-        strcpy(path, "index.html");
+        strcpy(path_without_slash, "index.html");
     }
 
     replace_URL_encodings(path_without_slash);
