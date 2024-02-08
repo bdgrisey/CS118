@@ -239,7 +239,7 @@ void serve_local_file(int client_socket, const char *path) {
                           "Content-Type: text/plain\r\n"
                           "Content-Length: 13\r\n"
                           "\r\n"
-                          "File not found";
+                          "File not foundd";
         send(client_socket, response, strlen(response), 0);
         return;
     }
