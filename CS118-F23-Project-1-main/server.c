@@ -218,7 +218,7 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
-    if (strcmp(extract_file_type(path_without_slash), "ts")) {
+    if (strcmp(extract_file_type(path_without_slash), "ts") == 0) {
         proxy_remote_file(app, client_socket, path_without_slash);
     } else { 
     // may need to replace "path_without_slash" with "file_name"
