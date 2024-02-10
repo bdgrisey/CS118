@@ -218,13 +218,12 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
-    // if (need_proxy(...)) {
-    //    proxy_remote_file(app, client_socket, file_name);
-    // } else {
-        
+    if (strcmp(extract_file_type(path), "ts")) {
+        proxy_remote_file(app, client_socket, path_without_slash);
+    } else { 
     // may need to replace "path_without_slash" with "file_name"
-    serve_local_file(client_socket, path_without_slash);
-    //}
+        serve_local_file(client_socket, path_without_slash);
+    }
 }
 
 void serve_local_file(int client_socket, const char *path) {
@@ -321,4 +320,53 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
 
     char response[] = "HTTP/1.0 501 Not Implemented\r\n\r\n";
     send(client_socket, response, strlen(response), 0);
+    
+    // Step one: establish connection with remote server
+    int remote_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (remote_socket < 0) {
+        perror("socket failed");
+        return;
+    }
+
+    struct sockaddr_in remote_addr;
+    remote_addr.sin_family = AF_INET;
+    remote_addr.sin_addr.s_addr = INADDR_ANY;
+    remote_addr.sin_port = htons(app.server_port);
+    
+    if (inet_pton(AF_INET, app->remote_host, &remote_addr.sin_addr) <= 0) {
+        perror("inet_pton failed");
+        close(remote_socket);
+        return;
+    }
+
+    if (connect(remote_socket, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) < 0) {
+        perror("connect failed");
+        close(remote_socket);
+        return;
+    }
+
+    // Step two: forward original request to remote server
+    if (send(remote_socket, request, strlen(request), 0) < 0) {
+        perror("send failed");
+        close(remote_socket);
+        return;
+    }
+
+    // Step three: receive response from remote server, and forward it to client
+    char response_to_send[BUFFER_SIZE];
+    int num_bytes_read = 0;
+    while (num_bytes_read = recv(remote_socket, response_to_send, sizeof(response_to_send), 0) > 0) {
+        if (send(client_socket, response_to_send, bytes_read, 0) == -1) {
+            perror("send failed");
+            close(remote_socket);
+            return;
+        }
+    }
+    
+    if (num_bytes_read < 0) {
+        perror("send failed");
+        close(remote_socket);
+        return;
+    }
+
 }
