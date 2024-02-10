@@ -318,10 +318,8 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     // * When connection to the remote server fail, properly generate
     // HTTP 502 "Bad Gateway" response
 
-    //char response[] = "HTTP/1.0 501 Not Implemented\r\n\r\n";
-    //send(client_socket, response, strlen(response), 0);
-    ssize_t bytes_sent, bytes_received;
-    char response_buffer[BUFFER_SIZE];
+    char response[] = "HTTP/1.0 501 Not Implemented\r\n\r\n";
+    send(client_socket, response, strlen(response), 0);
     
     // Step one: establish connection with remote server
     int remote_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -355,40 +353,6 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     }
 
     // Step three: receive response from remote server, and forward it to client
-    //response headers
-    bytes_received = recv(remote_socket, response_buffer, sizeof(response_buffer), 0);
-    if (bytes_received == -1) {
-        perror("recv failed");
-        close(remote_socket);
-        return;
-    }
-
-    char response_header[] = "HTTP/1.0 200 OK\r\n"
-                             "Content-Type: video/MP2T\r\n"
-                             "Content-Length: %zd\r\n"
-                             "\r\n";
-    char header_buffer[BUFFER_SIZE];
-    snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
-
-    // Send the HTTP response header to the client
-    ssize_t header_length = strlen(header_buffer);
-    ssize_t bytes_sent = send(client_socket, header_buffer, header_length, 0);
-    if (bytes_sent != header_length) {
-        perror("send header failed");
-        close(remote_socket);
-        return;
-    }
-
-    // Send the content of the .ts file to the client
-    bytes_sent = send(client_socket, response_buffer, bytes_received, 0);
-    if (bytes_sent == -1) {
-        perror("send to client failed");
-        close(remote_socket);
-        return;
-    }
-
-    //data
-    /*
     char response_to_send[BUFFER_SIZE] = {0};
     int num_bytes_read = 0;
     while (num_bytes_read = recv(remote_socket, response_to_send, sizeof(response_to_send), 0) > 0) {
@@ -399,7 +363,11 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
         }
         memset(response_to_send, 0, BUFFER_SIZE);
     }
-    */
     
+    if (num_bytes_read < 0) {
+        perror("send failed");
+        close(remote_socket);
+        return;
+    }
     close(remote_socket);
 }
