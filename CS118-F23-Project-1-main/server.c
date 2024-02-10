@@ -218,7 +218,7 @@ void handle_request(struct server_app *app, int client_socket) {
 
     // TODO: Implement proxy and call the function under condition
     // specified in the spec
-    if (strcmp(extract_file_type(path), "ts")) {
+    if (strcmp(extract_file_type(path_without_slash), "ts")) {
         proxy_remote_file(app, client_socket, path_without_slash);
     } else { 
     // may need to replace "path_without_slash" with "file_name"
@@ -242,9 +242,9 @@ void serve_local_file(int client_socket, const char *path) {
         // File not found, send a 404 response
         char response[] = "HTTP/1.1 404 Not Found\r\n"
                           "Content-Type: text/plain\r\n"
-                          "Content-Length: 14\r\n"
+                          "Content-Length: 13\r\n"
                           "\r\n"
-                          "File not found";
+                          "File not foun";
         send(client_socket, response, strlen(response), 0);
         return;
     }
