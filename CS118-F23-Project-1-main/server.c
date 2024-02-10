@@ -353,7 +353,7 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     }
 
     // Step three: receive response from remote server, and forward it to client
-    char response_to_send[BUFFER_SIZE];
+    char response_to_send[BUFFER_SIZE] = {0};
     int num_bytes_read = 0;
     while (num_bytes_read = recv(remote_socket, response_to_send, sizeof(response_to_send), 0) > 0) {
         if (send(client_socket, response_to_send, bytes_read, 0) == -1) {
@@ -361,6 +361,7 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
             close(remote_socket);
             return;
         }
+        memset(response_to_send, 0, response_to_send);
     }
     
     if (num_bytes_read < 0) {
@@ -368,5 +369,5 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
         close(remote_socket);
         return;
     }
-
+    close(remote_socket);
 }
