@@ -373,21 +373,21 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
         return;
     }
 
-    char response_header[] = "HTTP/1.0 200 OK\r\n"
-                             "Content-Type: video/MP2T\r\n"
-                             "Content-Length: %zd\r\n"
-                             "\r\n";
-    char header_buffer[BUFFER_SIZE];
-    snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
+    // char response_header[] = "HTTP/1.0 200 OK\r\n"
+    //                          "Content-Type: video/MP2T\r\n"
+    //                          "Content-Length: %zd\r\n"
+    //                          "\r\n";
+    // char header_buffer[BUFFER_SIZE];
+    // snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
 
-    // Send the HTTP response header to the client
-    ssize_t header_length = strlen(header_buffer);
-    bytes_sent = send(client_socket, header_buffer, header_length, 0);
-    if (bytes_sent != header_length) {
-        perror("send header failed");
-        close(remote_socket);
-        return;
-    }
+    // // Send the HTTP response header to the client
+    // ssize_t header_length = strlen(header_buffer);
+    // bytes_sent = send(client_socket, header_buffer, header_length, 0);
+    // if (bytes_sent != header_length) {
+    //     perror("send header failed");
+    //     close(remote_socket);
+    //     return;
+    // }
 
     // Send the content of the .ts file to the client
     bytes_sent = send(client_socket, response_buffer, bytes_received, 0);
