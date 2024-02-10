@@ -331,7 +331,7 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     struct sockaddr_in remote_addr;
     remote_addr.sin_family = AF_INET;
     remote_addr.sin_addr.s_addr = INADDR_ANY;
-    remote_addr.sin_port = htons(app.server_port);
+    remote_addr.sin_port = htons(app->server_port);
     
     if (inet_pton(AF_INET, app->remote_host, &remote_addr.sin_addr) <= 0) {
         perror("inet_pton failed");
@@ -356,12 +356,12 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     char response_to_send[BUFFER_SIZE] = {0};
     int num_bytes_read = 0;
     while (num_bytes_read = recv(remote_socket, response_to_send, sizeof(response_to_send), 0) > 0) {
-        if (send(client_socket, response_to_send, bytes_read, 0) == -1) {
+        if (send(client_socket, response_to_send, num_bytes_read, 0) == -1) {
             perror("send failed");
             close(remote_socket);
             return;
         }
-        memset(response_to_send, 0, response_to_send);
+        memset(response_to_send, 0, BUFFER_SIZE);
     }
     
     if (num_bytes_read < 0) {
