@@ -317,9 +317,6 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     // Bonus:
     // * When connection to the remote server fail, properly generate
     // HTTP 502 "Bad Gateway" response
-
-    char response[] = "HTTP/1.0 501 Not Implemented\r\n\r\n";
-    send(client_socket, response, strlen(response), 0);
     
     // Step one: establish connection with remote server
     int remote_socket = socket(AF_INET, SOCK_STREAM, 0);
