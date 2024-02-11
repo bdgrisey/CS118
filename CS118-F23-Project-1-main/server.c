@@ -9,6 +9,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+/*
+Project 1 Team:
+Rahul Mallick
+Ben Grisey
+*/
+
 /**
  * Project 1 starter code
  * All parts needed to be changed/added are marked with TODO
@@ -330,6 +336,14 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
         return;
     }
 
+    char bad_gateway_response[] = "HTTP/1.1 502 Bad Gateway\r\n"
+                                  "Content-Type: text/plain\r\n"
+                                  "Content-Length: 11\r\n"
+                                  "\r\n"
+                                  "Bad Gateway";
+
+     
+
     struct sockaddr_in remote_addr;
     remote_addr.sin_family = AF_INET;
     remote_addr.sin_addr.s_addr = inet_addr(app->remote_host);
@@ -338,12 +352,14 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     if (inet_aton(app->remote_host, &remote_addr.sin_addr) <= 0) {
         perror("inet_pton failed");
         close(remote_socket);
+        send(client_socket, bad_gateway_response, strlen(bad_gateway_response), 0);
         return;
     }
 
     if (connect(remote_socket, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) < 0) {
         perror("connect failed");
         close(remote_socket);
+        send(client_socket, bad_gateway_response, strlen(bad_gateway_response), 0);
         return;
     }
 
@@ -351,6 +367,7 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     if (send(remote_socket, request, strlen(request), 0) < 0) {
         perror("send failed");
         close(remote_socket);
+        send(client_socket, bad_gateway_response, strlen(bad_gateway_response), 0);
         return;
     }
 
@@ -367,11 +384,13 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     // }
     while(1)
     {
+        // Clear buffer then read from remote
         memset(response_buffer, 0, BUFFER_SIZE);
         bytes_received = recv(remote_socket, response_buffer, sizeof(response_buffer), 0);
         if (bytes_received == -1) {
             perror("recv failed");
             close(remote_socket);
+            send(client_socket, bad_gateway_response, strlen(bad_gateway_response), 0);
             return;
         }
         if (bytes_received == 0) {
