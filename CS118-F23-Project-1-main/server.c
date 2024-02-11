@@ -332,10 +332,10 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
 
     struct sockaddr_in remote_addr;
     remote_addr.sin_family = AF_INET;
-    remote_addr.sin_addr.s_addr = INADDR_ANY;
+    remote_addr.sin_addr.s_addr = inet_addr(app->remote_host);
     remote_addr.sin_port = htons(app->remote_port);
     
-    if (inet_pton(AF_INET, app->remote_host, &remote_addr.sin_addr) <= 0) {
+    if (inet_aton(app->remote_host, &remote_addr.sin_addr) <= 0) {
         perror("inet_pton failed");
         close(remote_socket);
         return;
@@ -365,42 +365,49 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
     //     }
     //     memset(response_to_send, 0, BUFFER_SIZE);
     // }
+    while(1)
+    {
+        memset(response_buffer, 0, BUFFER_SIZE);
+        bytes_received = recv(remote_socket, response_buffer, sizeof(response_buffer), 0);
+        if (bytes_received == -1) {
+            perror("recv failed");
+            close(remote_socket);
+            return;
+        }
+        if (bytes_received == 0) {
+            perror("recv ended");
+            close(remote_socket);
+            return;
+        }
 
-    bytes_received = recv(remote_socket, response_buffer, sizeof(response_buffer), 0);
-    if (bytes_received == -1) {
-        perror("recv failed");
-        close(remote_socket);
-        return;
+        // char response_header[] = "HTTP/1.0 200 OK\r\n"
+        //                          "Content-Type: video/MP2T\r\n"
+        //                          "Content-Length: %zd\r\n"
+        //                          "\r\n";
+        // char header_buffer[BUFFER_SIZE];
+        // snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
+
+        // // Send the HTTP response header to the client
+        // ssize_t header_length = strlen(header_buffer);
+        // bytes_sent = send(client_socket, header_buffer, header_length, 0);
+        // if (bytes_sent != header_length) {
+        //     perror("send header failed");
+        //     close(remote_socket);
+        //     return;
+        // }
+
+        // Send the content of the .ts file to the client
+        bytes_sent = send(client_socket, response_buffer, bytes_received, 0);
+        if (bytes_sent == -1) {
+            perror("send to client failed");
+            close(remote_socket);
+            return;
+        }
     }
-
-    // char response_header[] = "HTTP/1.0 200 OK\r\n"
-    //                          "Content-Type: video/MP2T\r\n"
-    //                          "Content-Length: %zd\r\n"
-    //                          "\r\n";
-    // char header_buffer[BUFFER_SIZE];
-    // snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
-
-    // // Send the HTTP response header to the client
-    // ssize_t header_length = strlen(header_buffer);
-    // bytes_sent = send(client_socket, header_buffer, header_length, 0);
-    // if (bytes_sent != header_length) {
-    //     perror("send header failed");
-    //     close(remote_socket);
-    //     return;
-    // }
-
-    // Send the content of the .ts file to the client
-    bytes_sent = send(client_socket, response_buffer, bytes_received, 0);
-    if (bytes_sent == -1) {
-        perror("send to client failed");
-        close(remote_socket);
-        return;
-    }
-    
     // if (num_bytes_read < 0) {
     //     perror("send failed");
     //     close(remote_socket);
     //     return;
     // }
-    close(remote_socket);
+    //close(remote_socket);
 }
