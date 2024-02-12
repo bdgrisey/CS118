@@ -342,15 +342,13 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
                                   "\r\n"
                                   "Bad Gateway";
 
-     
-
     struct sockaddr_in remote_addr;
     remote_addr.sin_family = AF_INET;
     remote_addr.sin_addr.s_addr = inet_addr(app->remote_host);
     remote_addr.sin_port = htons(app->remote_port);
     
     if (inet_aton(app->remote_host, &remote_addr.sin_addr) <= 0) {
-        perror("inet_pton failed");
+        perror("inet_aton failed");
         close(remote_socket);
         send(client_socket, bad_gateway_response, strlen(bad_gateway_response), 0);
         return;
@@ -399,22 +397,6 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
             return;
         }
 
-        // char response_header[] = "HTTP/1.0 200 OK\r\n"
-        //                          "Content-Type: video/MP2T\r\n"
-        //                          "Content-Length: %zd\r\n"
-        //                          "\r\n";
-        // char header_buffer[BUFFER_SIZE];
-        // snprintf(header_buffer, sizeof(header_buffer), response_header, bytes_received);
-
-        // // Send the HTTP response header to the client
-        // ssize_t header_length = strlen(header_buffer);
-        // bytes_sent = send(client_socket, header_buffer, header_length, 0);
-        // if (bytes_sent != header_length) {
-        //     perror("send header failed");
-        //     close(remote_socket);
-        //     return;
-        // }
-
         // Send the content of the .ts file to the client
         bytes_sent = send(client_socket, response_buffer, bytes_received, 0);
         if (bytes_sent == -1) {
@@ -423,10 +405,4 @@ void proxy_remote_file(struct server_app *app, int client_socket, const char *re
             return;
         }
     }
-    // if (num_bytes_read < 0) {
-    //     perror("send failed");
-    //     close(remote_socket);
-    //     return;
-    // }
-    //close(remote_socket);
 }
