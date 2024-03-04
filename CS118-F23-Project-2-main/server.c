@@ -73,6 +73,7 @@ int main() {
 
             // Send acknowledgement for the received packet
             ack_pkt.acknum = buffer.seqnum;
+            ack_pkt.last = buffer.last;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("Ack sent for current packet\n");
 
