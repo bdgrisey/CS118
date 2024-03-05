@@ -82,54 +82,54 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 0;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
-    while (!feof(fp)) {
-        // Read data from file
-        size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
-        if (bytes_read == 0) {
-            if (feof(fp))
+
+    // Define a structure to represent packets in the window
+    struct window_packet {
+        struct packet pkt;
+        int sent; // Flag to track if packet has been sent
+    };
+
+    // Main loop for sending packets
+    while (!feof(fp) || base < next_seq_num) {
+        // Send packets within the window
+        while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
+            // Read data from file
+            size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
+            if (bytes_read == 0 && feof(fp)) {
                 last = 1;
-            else {
-                perror("Error reading from file");
-                break;
             }
+
+            // Create packet
+            build_packet(&send_window[next_seq_num % WINDOW_SIZE].pkt, next_seq_num, ack_num, last, ack, bytes_read, buffer);
+            send_window[next_seq_num % WINDOW_SIZE].sent = 0; // Mark packet as not yet sent
+
+            next_seq_num++;
         }
-        if (bytes_read < PAYLOAD_SIZE) {
-            if (feof(fp)) {
-                last = 1;
+
+        // Send packets within the window if not already sent
+        for (int i = base; i < next_seq_num; i++) {
+            if (!send_window[i % WINDOW_SIZE].sent) {
+                sendto(send_sockfd, &send_window[i % WINDOW_SIZE].pkt, sizeof(struct packet), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+                send_window[i % WINDOW_SIZE].sent = 1; // Mark packet as sent
             }
         }
 
-        // Create packet
-        build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
-        printf("Packet created\n");
-        
-        // Sending of packet (with timeout)
+        // Receive acknowledgments
         while (1) {
-            // Send packet
-            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-            printf("Packet sent\n");
-
-            // Receive acknowledgment
+            struct packet ack_pkt;
             bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-            if (bytes_read >= 0 && ack_pkt.acknum == seq_num) {
+            if (bytes_read >= 0) {
                 // Acknowledgment received
-                printf("Acknowledgment received for sequence number %d\n", seq_num);
-                seq_num++; // Update sequence number for next packet
-                // if ack pkt corresponds to last packet
-                if (ack_pkt.last) {
-                    fclose(fp);
-                    close(listen_sockfd);
-                    close(send_sockfd);
-                    return 0;
+                last_ack_received = ack_pkt.acknum;
+                // Slide window if acknowledgment for base packet
+                if (last_ack_received == base) {
+                    base++;
                 }
-                break;
-            } else if (ack_pkt.acknum != seq_num) {
-                printf("Invalid acknowledgement received\n");
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // Timeout occurred, resend packet
-                printf("Timeout occurred, resending packet\n");
+                // Timeout occurred, resend packets
+                break;
             } else {
-                // Error occurred
+                // Handle other errors
                 perror("recvfrom");
                 // Handle error
             }
