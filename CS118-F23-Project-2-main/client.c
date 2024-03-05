@@ -19,10 +19,7 @@ int main(int argc, char *argv[]) {
     unsigned short ack_num = 0;
     char last = 0;
     char ack = 0;
-    struct packet *packet_array;
-    int packet_array_capacity = 1024;
-    int packet_array_size = 0;
-
+    
     // read filename from command line argument
     if (argc != 2) {
         printf("Usage: ./client <filename>\n");
@@ -72,29 +69,19 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // TODO: 
-
-    // Read from file, and initiate reliable data transfer to the server
+    // TODO: Read from file, and initiate reliable data transfer to the server
     // Build and send packet
     // Wait for acknowledgment
+    // You need to implement acknowledgment handling here
     // Receive an acknowledgment from the server
     // Ensure the acknowledgment corresponds to the sent packet
     // If acknowledgment received is correct, update sequence number and continue sending
     // Otherwise, resend the packet
 
-    // Sets up timeouts for EACH recv call (Stop and Wait) -> will need to change this?
     tv.tv_sec = 1;
     tv.tv_usec = 0;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
-    // Sets up packet array (dynamically allocated)
-    packet_array = malloc(packet_array_capacity * sizeof(struct packet));
-    if (packet_array == NULL) {
-        printf("Memory allocation failed");
-        return 1;
-    }
-
-    // Create packets and store them in packet array
     while (!feof(fp)) {
         // Read data from file
         size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
@@ -113,54 +100,41 @@ int main(int argc, char *argv[]) {
         }
 
         // Create packet
-        struct packet pkt;
-        build_packet(&pkt, packet_array_size, ack_num, last, ack, bytes_read, buffer);
+        build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
         printf("Packet created\n");
         
-        // Store into array
-        if (packet_array_size >= packet_array_capacity) {
-            packet_array = realloc(packet_array, packet_array_capacity * sizeof(struct packet));
-            if (packet_array == NULL) {
-                printf("Memory reallocation failed\n");
-                return 1;
+        // Sending of packet (with timeout)
+        while (1) {
+            // Send packet
+            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+            printf("Packet sent\n");
+
+            // Receive acknowledgment
+            bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+            if (bytes_read >= 0 && ack_pkt.acknum == seq_num) {
+                // Acknowledgment received
+                printf("Acknowledgment received for sequence number %d\n", seq_num);
+                seq_num++; // Update sequence number for next packet
+                // if ack pkt corresponds to last packet
+                if (ack_pkt.last) {
+                    fclose(fp);
+                    close(listen_sockfd);
+                    close(send_sockfd);
+                    return 0;
+                }
+                break;
+            } else if (ack_pkt.acknum != seq_num) {
+                printf("Invalid acknowledgement received\n");
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // Timeout occurred, resend packet
+                printf("Timeout occurred, resending packet\n");
+            } else {
+                // Error occurred
+                perror("recvfrom");
+                // Handle error
             }
         }
-        packet_array[packet_array_size] = pkt;
-        packet_array_size++;
     }
-
-
-    // Sending of packet (Stop and Wait)
-    while (1) {
-        // Send packet
-        sendto(send_sockfd, &packet_array[seq_num], sizeof(packet_array[seq_num]), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-
-        // Receive acknowledgment
-        int bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-        if (bytes_read >= 0 && ack_pkt.acknum == seq_num) {
-            // Acknowledgment received
-            printf("Acknowledgment received for sequence number %d\n", seq_num);
-            seq_num++; // Update sequence number for next packet
-            // if ack pkt corresponds to last packet
-            if (ack_pkt.last) {
-                free(packet_array);
-                fclose(fp);
-                close(listen_sockfd);
-                close(send_sockfd);
-                return 0;
-            }
-        } else if (ack_pkt.acknum != seq_num) {
-            printf("Invalid acknowledgement received\n");
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // Timeout occurred, resend packet
-            printf("Timeout occurred, resending packet\n");
-        } else {
-            // Error occurred
-            perror("recvfrom");
-            // Handle error
-        }
-    }
-    
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
