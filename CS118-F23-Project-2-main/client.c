@@ -89,6 +89,12 @@ int main(int argc, char *argv[]) {
         int sent; // Flag to track if packet has been sent
     };
 
+    // Initialize window variables
+    struct window_packet send_window[WINDOW_SIZE];
+    int base = 0; // Base of the window
+    int next_seq_num = 0; // Next sequence number to send
+    int last_ack_received = -1; // Last acknowledgment received
+    
     // Main loop for sending packets
     while (!feof(fp) || base < next_seq_num) {
         // Send packets within the window
