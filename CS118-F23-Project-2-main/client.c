@@ -19,6 +19,9 @@ int main(int argc, char *argv[]) {
     unsigned short ack_num = 0;
     char last = 0;
     char ack = 0;
+    unsigned short base = 0;  // Sequence number of oldest unacknowledged packet
+    unsigned short next_seq_num = 0;  // Sequence number of next packet to send
+    struct packet window[WINDOW_SIZE];  // Sending window
     
     // read filename from command line argument
     if (argc != 2) {
@@ -82,8 +85,10 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 0;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
-    while (base < nextseqnum || !last) {
-        while (nextseqnum < base + WINDOW_SIZE && !last) {
+    // Main loop for sending packets
+    while (!feof(fp) || base != next_seq_num) {
+        // Send packets up to the window size
+        while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
             if (bytes_read == 0) {
@@ -99,40 +104,42 @@ int main(int argc, char *argv[]) {
                     last = 1;
                 }
             }
-
-            // Create packet
-            build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
-            printf("Packet created\n");
-
-            // Send packet
-            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-            printf("Packet sent with seq_num %d\n", seq_num);
-            seq_num++; // Increment sequence number
-            nextseqnum++; // Increment next sequence number
+            // Create packet and add it to the sending window
+            build_packet(&window[next_seq_num % WINDOW_SIZE], next_seq_num, ack_num, last, ack, bytes_read, buffer);
+            printf("Packet %d created\n", next_seq_num);
+            // Send the packet
+            sendto(send_sockfd, &window[next_seq_num % WINDOW_SIZE], sizeof(window[next_seq_num % WINDOW_SIZE]), 0,
+                (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+            printf("Packet %d sent\n", next_seq_num);
+            // Increment sequence number for the next packet
+            next_seq_num++;
         }
 
-        // Receive acknowledgment
+        // Receive acknowledgments
         bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-        if (bytes_read >= 0 && ack_pkt.acknum >= base) {
+        if (bytes_read >= 0) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
-            base = ack_pkt.acknum + 1; // Update base of the window
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // Timeout occurred, resend packets in window
-            printf("Timeout occurred, resending packets\n");
-            seq_num = base; // Reset sequence number to the base
-            nextseqnum = base; // Reset next sequence number to the base
-        } else {
-            // Error occurred
+            if (ack_pkt.acknum >= base && ack_pkt.acknum < base + WINDOW_SIZE) {
+                // Slide the window
+                base = ack_pkt.acknum + 1;
+            }
+        } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            // Timeout or error occurred
             perror("recvfrom");
             // Handle error
         }
+        // Check for timeout on unacknowledged packets
+        for (unsigned short i = base; i < next_seq_num; i++) {
+            if (i >= base + WINDOW_SIZE) {
+                // The oldest unacknowledged packet has timed out
+                printf("Timeout occurred for packet %d, resending packets\n", i);
+                next_seq_num = i;
+                break;
+            }
+        }
     }
 
-    fclose(fp);
-    close(listen_sockfd);
-    close(send_sockfd);
-    return 0;
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
