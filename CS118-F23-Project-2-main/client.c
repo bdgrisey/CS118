@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Receive acknowledgments
-        bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
         if (bytes_read >= 0) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
