@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 #include "utils.h"
 
 volatile sig_atomic_t timeout = false;
