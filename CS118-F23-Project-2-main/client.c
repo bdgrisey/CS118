@@ -6,7 +6,6 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdbool.h>
 #include "utils.h"
 
 volatile sig_atomic_t timeout = false;
@@ -38,9 +37,6 @@ int main(int argc, char *argv[]) {
     struct packet window[WINDOW_SIZE];  // Sending window
     double elapsed_time;
     int total_bytes_sent = 0;
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(listen_sockfd, &readfds);
     
     // read filename from command line argument
     if (argc != 2) {
@@ -100,14 +96,17 @@ int main(int argc, char *argv[]) {
     // If acknowledgment received is correct, update sequence number and continue sending
     // Otherwise, resend the packet
 
-    tv.tv_sec = 5;
+    tv.tv_sec = 3;
     tv.tv_usec = 0;
-    // setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
+    setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     // Main loop for sending packets
     while (!feof(fp) || base != next_seq_num) {
         // Send packets up to the window size
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
+            if (next_seq_num == 0) {
+                set_timer();
+            }
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
             if (bytes_read == 0) {
@@ -136,25 +135,28 @@ int main(int argc, char *argv[]) {
         }
 
         // Receive acknowledgments
-        int ready = select(listen_sockfd + 1, &readfds, NULL, NULL, &tv);
-        if (ready == -1) {
-            perror("select");
-        } else if (ready == 0) {
-            next_seq_num = base;
-            fseek(fp, -total_bytes_sent, SEEK_CUR);
-        } else {
-            size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-            if (bytes_read >= 0) {
-                // Acknowledgment received
-                printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
-                if (ack_pkt.acknum == base) {
-                    // Slide the window
-                    base = ack_pkt.acknum + 1;
-                    if (ack_pkt.last == 1) {
-                        break;
-                    }
+        size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        if (bytes_read >= 0) {
+            // Acknowledgment received
+            printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
+            if (ack_pkt.acknum == base) {
+                // Slide the window
+                base = ack_pkt.acknum + 1;
+                set_timer();
+            }
+        }
+        // Check for timeout on unacknowledged packets
+        if (timeout) {
+            for (unsigned short i = base; i < next_seq_num; i++) {
+                if (i >= base + WINDOW_SIZE) {
+                    // The oldest unacknowledged packet has timed out
+                    printf("Timeout occurred for packet %d, resending packets\n", i);
+                    next_seq_num = i;
+                    break;
                 }
             }
+            fseek(fp, -total_bytes_sent, SEEK_CUR);
+            set_timer();
         }
     }
 
