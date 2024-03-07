@@ -38,6 +38,9 @@ int main(int argc, char *argv[]) {
     struct packet window[WINDOW_SIZE];  // Sending window
     double elapsed_time;
     int total_bytes_sent = 0;
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(listen_sockfd, &readfds);
     
     // read filename from command line argument
     if (argc != 2) {
@@ -97,12 +100,11 @@ int main(int argc, char *argv[]) {
     // If acknowledgment received is correct, update sequence number and continue sending
     // Otherwise, resend the packet
 
-    // tv.tv_sec = 1;
-    // tv.tv_usec = 0;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
     // setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     // Main loop for sending packets
-    set_timer();
     while (!feof(fp) || base != next_seq_num) {
         // Send packets up to the window size
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
@@ -134,24 +136,25 @@ int main(int argc, char *argv[]) {
         }
 
         // Receive acknowledgments
-        size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-        if (bytes_read >= 0) {
-            // Acknowledgment received
-            printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
-            if (ack_pkt.acknum == base) {
-                // Slide the window
-                base = ack_pkt.acknum + 1;
-                if (ack_pkt.last == 1) {
-                    break;
-                }
-                set_timer();
-            }
-        }
-        // Check for timeout on unacknowledged packets
-        if (timeout) {
+        int ready = select(listen_sockfd + 1, &readfds, NULL, NULL, &tv);
+        if (ready == -1) {
+            perror("select");
+        } else if (ready == 0) {
             next_seq_num = base;
             fseek(fp, -total_bytes_sent, SEEK_CUR);
-            set_timer();
+        } else {
+            size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+            if (bytes_read >= 0) {
+                // Acknowledgment received
+                printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
+                if (ack_pkt.acknum == base) {
+                    // Slide the window
+                    base = ack_pkt.acknum + 1;
+                    if (ack_pkt.last == 1) {
+                        break;
+                    }
+                }
+            }
         }
     }
 
