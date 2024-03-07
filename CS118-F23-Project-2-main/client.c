@@ -6,6 +6,7 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include "utils.h"
 
 volatile sig_atomic_t timeout = false;
@@ -101,12 +102,10 @@ int main(int argc, char *argv[]) {
     // setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     // Main loop for sending packets
+    set_timer();
     while (!feof(fp) || base != next_seq_num) {
         // Send packets up to the window size
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
-            if (next_seq_num == 0) {
-                set_timer();
-            }
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
             if (bytes_read == 0) {
@@ -142,19 +141,15 @@ int main(int argc, char *argv[]) {
             if (ack_pkt.acknum == base) {
                 // Slide the window
                 base = ack_pkt.acknum + 1;
+                if (ack_pkt.last == 1) {
+                    break;
+                }
                 set_timer();
             }
         }
         // Check for timeout on unacknowledged packets
         if (timeout) {
-            for (unsigned short i = base; i < next_seq_num; i++) {
-                if (i >= base + WINDOW_SIZE) {
-                    // The oldest unacknowledged packet has timed out
-                    printf("Timeout occurred for packet %d, resending packets\n", i);
-                    next_seq_num = i;
-                    break;
-                }
-            }
+            next_seq_num = base;
             fseek(fp, -total_bytes_sent, SEEK_CUR);
             set_timer();
         }

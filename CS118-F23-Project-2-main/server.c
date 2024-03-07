@@ -62,7 +62,7 @@ int main() {
             // Packet with unexpected sequence number, send ACK for previous packet
             ack_pkt.acknum = expected_seq_num - 1;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
-            printf("Ack sent for previous packet\n");
+            printf("Ack sent for previous packet: %d\n", buffer.seqnum);
         } else {
             // Write payload to file
             fwrite(buffer.payload, 1, buffer.length, fp);
@@ -75,7 +75,7 @@ int main() {
             ack_pkt.acknum = buffer.seqnum;
             ack_pkt.last = buffer.last;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
-            printf("Ack sent for current packet\n");
+            printf("Ack sent for current packet: %d\n", buffer.seqnum);
 
             // Check if it is the last packet
             if (buffer.last)
