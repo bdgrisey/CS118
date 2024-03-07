@@ -158,6 +158,28 @@ int main(int argc, char *argv[]) {
             fseek(fp, -total_bytes_sent, SEEK_CUR);
             set_timer();
         }
+        // Receive acknowledgment
+        bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        if (bytes_read >= 0 && ack_pkt.acknum == seq_num) {
+            // Acknowledgment received
+            printf("Acknowledgment received for sequence number %d\n", seq_num);
+            base = ack_pkt.acknum + 1;
+            // if ack pkt corresponds to last packet
+            if (ack_pkt.last) {
+                break;
+            }
+        } else if (ack_pkt.acknum != seq_num) {
+            printf("Invalid acknowledgement received\n");
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Timeout occurred, resend packet
+            printf("Timeout occurred, resending packets\n");
+            next_seq_num = base;
+            fseek(fp, -total_bytes_sent, SEEK_CUR);
+        } else {
+            // Error occurred
+            perror("recvfrom");
+            // Handle error
+        }
     }
 
     fclose(fp);
