@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
     // If acknowledgment received is correct, update sequence number and continue sending
     // Otherwise, resend the packet
 
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 250000;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     while (!feof(fp)) {
@@ -123,11 +123,15 @@ int main(int argc, char *argv[]) {
                     return 0;
                 }
                 break;
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
+                // Timeout occurred
+                if (pkt.last) {
+                    break;
+                } else {
+                    printf("Timeout occurred, resending packet\n");
+                }
             } else if (ack_pkt.acknum != seq_num) {
                 printf("Invalid acknowledgement received\n");
-            } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // Timeout occurred, resend packet
-                printf("Timeout occurred, resending packet\n");
             } else {
                 // Error occurred
                 perror("recvfrom");
