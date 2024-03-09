@@ -115,17 +115,13 @@ int main(int argc, char *argv[]) {
                 // Acknowledgment received
                 printf("Acknowledgment received for sequence number %d\n", seq_num);
                 seq_num++; // Update sequence number for next packet
-                // if ack pkt corresponds to last packet
-                if (ack_pkt.last) {
-                    fclose(fp);
-                    close(listen_sockfd);
-                    close(send_sockfd);
-                    return 0;
-                }
-                break;
+                if(!pkt.last)
+                    break;
+                else
+                    pkt.signoff = 1;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
                 // Timeout occurred
-                if (pkt.last) {
+                if (pkt.last && pkt.signoff) {
                     break;
                 } else {
                     printf("Timeout occurred, resending packet\n");

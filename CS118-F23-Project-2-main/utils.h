@@ -25,6 +25,7 @@ struct packet {
     unsigned short acknum;
     char ack;
     char last;
+    char signoff;
     unsigned int length;
     char payload[PAYLOAD_SIZE];
 };
@@ -35,6 +36,7 @@ void build_packet(struct packet* pkt, unsigned short seqnum, unsigned short ackn
     pkt->acknum = acknum;
     pkt->ack = ack;
     pkt->last = last;
+    pkt->signoff = 0;
     pkt->length = length;
     memcpy(pkt->payload, payload, length);
 }

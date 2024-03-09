@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <errno.h>
 
 #include "utils.h"
 
@@ -14,6 +16,7 @@ int main() {
     int expected_seq_num = 0;
     int recv_len;
     struct packet ack_pkt;
+    struct timeval tv;
 
     // Create a UDP socket for sending
     send_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -52,10 +55,19 @@ int main() {
     FILE *fp = fopen("output.txt", "wb");
 
     // TODO: Receive file from the client and save it as output.txt
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    //set 5s timeout for socket
+    setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     while (1) {
         // Receive data packet from client
         recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, NULL, NULL);
+
+        // Check if it is the last packet
+        if ((buffer.last && buffer.signoff) 
+            || errno == EAGAIN || errno == EWOULDBLOCK || recv_len <= 0)
+            break;
 
         // Check if packet has the expected sequence number
         if (buffer.seqnum != expected_seq_num) {
@@ -77,9 +89,7 @@ int main() {
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("Ack sent for current packet\n");
 
-            // Check if it is the last packet
-            if (buffer.last)
-                break;
+
         }
     }
 
