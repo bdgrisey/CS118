@@ -20,7 +20,9 @@ int main(int argc, char *argv[]) {
     char last = 0;
     char ack = 0;
     unsigned short next_seq_num = 0;
+    unsigned short base = 0;
     struct packet window[WINDOW_SIZE];
+    int total_bytes_sent = 0;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -141,10 +143,10 @@ int main(int argc, char *argv[]) {
         if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", seq_num);
-            base = (ack_pkt.ack_num - base) + 1; // Update sequence number for next packet
+            base = (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
             if(pkt.last)
                 pkt.signoff = 1;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
             // Timeout occurred
             if (pkt.last && pkt.signoff) {
                 break;
