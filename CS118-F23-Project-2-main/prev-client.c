@@ -5,7 +5,21 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 #include "utils.h"
+#include <stdbool.h>
+
+volatile sig_atomic_t timeout = false;
+
+void handle_alarm(int signum) {
+    timeout = true;
+}
+
+void set_timer() {
+    timeout = false;
+    signal(SIGALRM, handle_alarm);
+    alarm(5); // Set the alarm for 5 seconds
+}
 
 int main(int argc, char *argv[]) {
     int listen_sockfd, send_sockfd;
@@ -19,8 +33,11 @@ int main(int argc, char *argv[]) {
     unsigned short ack_num = 0;
     char last = 0;
     char ack = 0;
-    unsigned short next_seq_num = 0;
-    struct packet window[WINDOW_SIZE];
+    unsigned short base = 0;  // Sequence number of oldest unacknowledged packet
+    unsigned short next_seq_num = 0;  // Sequence number of next packet to send
+    struct packet window[WINDOW_SIZE];  // Sending window
+    double elapsed_time;
+    int total_bytes_sent = 0;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -80,31 +97,13 @@ int main(int argc, char *argv[]) {
     // If acknowledgment received is correct, update sequence number and continue sending
     // Otherwise, resend the packet
 
-    tv.tv_sec = 0;
-    tv.tv_usec = 250000;
+    tv.tv_sec = 3;
+    tv.tv_usec = 0;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
+    // Main loop for sending packets
     while (!feof(fp)) {
-        // // Read data from file
-        // size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
-        // if (bytes_read == 0) {
-        //     if (feof(fp))
-        //         last = 1;
-        //     else {
-        //         perror("Error reading from file");
-        //         break;
-        //     }
-        // }
-        // if (bytes_read < PAYLOAD_SIZE) {
-        //     if (feof(fp)) {
-        //         last = 1;
-        //     }
-        // }
-
-        // // Create packet
-        // build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
-        // printf("Packet created\n");
-
+        // Send packets up to the window size
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
@@ -133,32 +132,27 @@ int main(int argc, char *argv[]) {
             usleep(100000);
             next_seq_num++;
         }
-        
-        // Receive Acknowledgement
-        int bytes_read_from_socket = 0;
-        bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
 
-        if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
+        // Receive acknowledgments
+        size_t bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        if (bytes_read >= 0) {
             // Acknowledgment received
-            printf("Acknowledgment received for sequence number %d\n", seq_num);
-            base = (ack_pkt.ack_num - base) + 1; // Update sequence number for next packet
-            if(pkt.last)
-                pkt.signoff = 1;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
-            // Timeout occurred
-            if (pkt.last && pkt.signoff) {
-                break;
+            
+            if (ack_pkt.acknum == base) {
+                // Slide the window
+                printf("Correct acknowledgment received with sequence number %d\n", ack_pkt.acknum);
+                base = ack_pkt.acknum + 1;
+                total_bytes_sent -= ack_pkt.length;
+                //set_timer();
             } else {
-                printf("Timeout occurred, resending packets starting from: %d\n", base);
+                printf("Incorrect acknowledgment received with sequence number %d\n", ack_pkt.acknum);
+                fseek(fp, -total_bytes_sent, SEEK_CUR);
+                next_seq_num = base;
+                total_bytes_sent = 0;
             }
-        } else if (ack_pkt.acknum != seq_num) {
-            printf("Invalid acknowledgement received. Resending packets starting from: %d\n", base);
-        } else {
-            // Error occurred
-            perror("recvfrom");
-            // Handle error
         }
     }
+
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
