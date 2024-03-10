@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 250000;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
+
     while (!feof(fp)) {
         // // Read data from file
         // size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
         // // Create packet
         // build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
         // printf("Packet created\n");
-
+        // Create and send window
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
@@ -137,34 +138,56 @@ int main(int argc, char *argv[]) {
         }
         
         // Receive Acknowledgement
-        int bytes_read_from_socket = 0;
-        bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        do{
+            int bytes_read_from_socket = 0;
+            bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
 
-        if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
-            // Acknowledgment received
-            printf("Acknowledgment received for sequence number %d\n", seq_num);
-            total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * ack_pkt.length);
-            base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
-            if(pkt.last)
-                pkt.signoff = 1;
-        } else if (bytes_read_from_socket > 0) {
-            printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
-            // Timeout occurred
-            if (pkt.last && pkt.signoff) {
-                break;
+            if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
+                // Acknowledgment received
+                printf("Acknowledgment received for sequence number %d\n", seq_num);
+                if(ack_pkt.last)
+                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * PAYLOAD_SIZE - ack_pkt.length);
+                else
+                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
+                base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
+                if(last && ack_pkt.acknum == next_seq_num - 1)
+                {
+                    // If last meaningful packet ACKed then set last frame to signoff
+                    for(short i = 0; i < WINDOW_SIZE; i++)
+                    {
+                        window[i].last = 1;
+                        window[i].signoff = 1;
+                        base = next_seq_num - WINDOW_SIZE; // to spam signoff packets in loop
+                    }
+                }
+                    
+            } else if (bytes_read_from_socket > 0) {
+                printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
+                // Timeout occurred
+                if (window[0].last && window[0].signoff) {
+                    break;
+                } else if(last) {
+                    // Send last frame of packets
+                    for(short idx = (WINDOW_SIZE + base - next_seq_num); idx < WINDOW_SIZE; idx++)
+                        sendto(send_sockfd, &window[idx], sizeof(window[idx]), 0,
+                            (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+                } else {
+                    printf("Timeout occurred, resending packets starting from: %d\n", base);
+                    fseek(fp, -total_bytes_sent, SEEK_CUR);
+                    total_bytes_sent = 0;
+                    next_seq_num = base;
+                }
             } else {
-                printf("Timeout occurred, resending packets starting from: %d\n", base);
-                fseek(fp, -total_bytes_sent, SEEK_CUR);
-                total_bytes_sent = 0;
-                next_seq_num = base;
+                // Error occurred
+                perror("recvfrom");
+                // Handle error
             }
-        } else {
-            // Error occurred
-            perror("recvfrom");
-            // Handle error
-        }
+        }while(last)     
     }
+    
+    
+    
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
