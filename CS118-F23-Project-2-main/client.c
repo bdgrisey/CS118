@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", seq_num);
             base = (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
+            total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * ack_pkt.length);
             if(pkt.last)
                 pkt.signoff = 1;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
@@ -152,9 +153,15 @@ int main(int argc, char *argv[]) {
                 break;
             } else {
                 printf("Timeout occurred, resending packets starting from: %d\n", base);
+                fseek(fp, -total_bytes_sent, SEEK_CUR);
+                total_bytes_sent = 0;
+                next_seq_num = base;
             }
         } else if (ack_pkt.acknum != seq_num) {
             printf("Invalid acknowledgement received. Resending packets starting from: %d\n", base);
+            fseek(fp, -total_bytes_sent, SEEK_CUR);
+            total_bytes_sent = 0;
+            next_seq_num = base;
         } else {
             // Error occurred
             perror("recvfrom");
