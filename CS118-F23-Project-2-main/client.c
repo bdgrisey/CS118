@@ -112,11 +112,11 @@ int main(int argc, char *argv[]) {
             // Read data from file
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
             if (bytes_read == 0) {
-                if (feof(fp))
+                if (feof(fp)) {
                     last = 1;
                     last_seq_num = next_seq_num;
 
-                else {
+                } else {
                     perror("Error reading from file");
                     break;
                 }
@@ -147,13 +147,15 @@ int main(int argc, char *argv[]) {
 
             if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
                 // Acknowledgment received
-                printf("Acknowledgment received for sequence number %d\n", seq_num);
+                printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
                 if(ack_pkt.last)
                     total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * PAYLOAD_SIZE - ack_pkt.length);
                 else
                     total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
                 base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
                 next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
+                printf("Base: %d\n", base);
+                printf("Last: %d\n", last);
                 if(last && ack_pkt.acknum == last_seq_num)
                 {
                     // If last meaningful packet ACKed then set last frame to signoff
@@ -187,7 +189,7 @@ int main(int argc, char *argv[]) {
                 perror("recvfrom");
                 // Handle error
             }
-        }while(last)     
+        }while(last);
     }
     
     
