@@ -58,11 +58,13 @@ int main() {
     tv.tv_sec = 5;
     tv.tv_usec = 0;
     //set 5s timeout for socket
-    setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     while (1) {
         // Receive data packet from client
         recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, NULL, NULL);
+
+        if (buffer.last && !buffer.signoff) 
+            setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
         // Check if it is the last packet
         if ((buffer.last && buffer.signoff) 
@@ -74,6 +76,9 @@ int main() {
             // Packet with unexpected sequence number, send ACK for previous packet
             ack_pkt.acknum = expected_seq_num - 1;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
+            printf("buffer.seqnum: %d\n", buffer.seqnum);
+            printf("expected_seq_num: %d\n", expected_seq_num);
+            //printf("expected data:  %s\n", buffer.payload);
             printf("Ack sent for previous packet\n");
         } else {
             // Write payload to file

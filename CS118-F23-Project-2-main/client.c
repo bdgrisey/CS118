@@ -108,10 +108,11 @@ int main(int argc, char *argv[]) {
             // Send packet
             sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet sent\n");
-
+            
+            int bytes_read_from_socket = 0;
             // Receive acknowledgment
-            bytes_read = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-            if (bytes_read >= 0 && ack_pkt.acknum == seq_num) {
+            bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+            if (bytes_read_from_socket > 0 && ack_pkt.acknum == seq_num) {
                 // Acknowledgment received
                 printf("Acknowledgment received for sequence number %d\n", seq_num);
                 seq_num++; // Update sequence number for next packet
