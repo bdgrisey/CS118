@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     struct packet pkt;
     struct packet ack_pkt;
     char buffer[PAYLOAD_SIZE];
-    unsigned short seq_num = 0;
+    unsigned short last_seq_num = 0;
     unsigned short ack_num = 0;
     char last = 0;
     char ack = 0;
@@ -114,6 +114,8 @@ int main(int argc, char *argv[]) {
             if (bytes_read == 0) {
                 if (feof(fp))
                     last = 1;
+                    last_seq_num = next_seq_num;
+
                 else {
                     perror("Error reading from file");
                     break;
@@ -122,6 +124,7 @@ int main(int argc, char *argv[]) {
             if (bytes_read < PAYLOAD_SIZE) {
                 if (feof(fp)) {
                     last = 1;
+                    last_seq_num = next_seq_num;
                 }
             }
             total_bytes_sent += bytes_read;
@@ -150,7 +153,8 @@ int main(int argc, char *argv[]) {
                 else
                     total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
                 base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
-                if(last && ack_pkt.acknum == next_seq_num - 1)
+                next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
+                if(last && ack_pkt.acknum == last_seq_num)
                 {
                     // If last meaningful packet ACKed then set last frame to signoff
                     for(short i = 0; i < WINDOW_SIZE; i++)
