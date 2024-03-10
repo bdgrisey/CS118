@@ -63,7 +63,7 @@ int main() {
         // Receive data packet from client
         recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, NULL, NULL);
 
-        if (buffer.last && !buffer.signoff) 
+        if (buffer.last && !buffer.signoff && buffer.seqnum == expected_seq_num) 
             setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
         // Check if it is the last packet
