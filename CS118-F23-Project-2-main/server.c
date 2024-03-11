@@ -56,7 +56,7 @@ int main() {
 
     // TODO: Receive file from the client and save it as output.txt
     tv.tv_sec = 0;
-    tv.tv_usec = 100000;
+    tv.tv_usec = 500000;
     //set 5s timeout for socket
 
     while (1) {
@@ -74,7 +74,7 @@ int main() {
         // Check if packet has the expected sequence number
         if (buffer.seqnum != expected_seq_num) {
             // Packet with unexpected sequence number, send ACK for previous packet
-            ack_pkt.acknum = expected_seq_num - 1;
+            ack_pkt.acknum = (expected_seq_num) ? expected_seq_num - 1 : 0;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("buffer.seqnum: %d\n", buffer.seqnum);
             printf("expected_seq_num: %d\n", expected_seq_num);
