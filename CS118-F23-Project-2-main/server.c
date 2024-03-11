@@ -74,7 +74,7 @@ int main() {
         // Check if packet has the expected sequence number
         if (buffer.seqnum != expected_seq_num) {
             // Packet with unexpected sequence number, send ACK for previous packet
-            ack_pkt.acknum = (expected_seq_num) ? expected_seq_num - 1 : 0;
+            ack_pkt.acknum = expected_seq_num - 1;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("buffer.seqnum: %d\n", buffer.seqnum);
             printf("expected_seq_num: %d\n", expected_seq_num);

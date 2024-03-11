@@ -21,8 +21,8 @@
 // Packet Layout
 // You may change this if you want to
 struct packet {
-    unsigned short seqnum;
-    unsigned short acknum;
+    short seqnum;
+    short acknum;
     char ack;
     char last;
     char signoff;
@@ -31,7 +31,7 @@ struct packet {
 };
 
 // Utility function to build a packet
-void build_packet(struct packet* pkt, unsigned short seqnum, unsigned short acknum, char last, char ack,unsigned int length, const char* payload) {
+void build_packet(struct packet* pkt, short seqnum, short acknum, char last, char ack,unsigned int length, const char* payload) {
     pkt->seqnum = seqnum;
     pkt->acknum = acknum;
     pkt->ack = ack;
