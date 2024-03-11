@@ -172,6 +172,7 @@ int main(int argc, char *argv[]) {
             } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
                 // Timeout occurred
                 if (window[0].last && window[0].signoff) {
+                    sleep(5);
                     break;
                 } else if(last) {
                     // Send last frame of packets
