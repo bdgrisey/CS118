@@ -126,15 +126,17 @@ int main(int argc, char *argv[]) {
 
 
         // Create and send window
-        while (sent_seq_num < base + WINDOW_SIZE  && !last) {
-            // Point window to the head of the master_queue
-            int frame_size = assign_range(&master_queue, window)
+        // Point window to the head of the master_queue
+        int frame_size = assign_range(&master_queue, window);
+        while (sent_seq_num < base + frame_size  && !last) {
             // Send the packet
-            sendto(send_sockfd, &window[sent_seq_num % frame_size], sizeof(window[sent_seq_num % frame_size]), 0,
+            sendto(send_sockfd, window[sent_seq_num % frame_size], sizeof(*window[sent_seq_num % frame_size]), 0,
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
+            printRecv(struct packet* pkt);
             // Increment sequence number for the next packet
             usleep(100000);
+            
             sent_seq_num++;
         }
     
@@ -157,11 +159,11 @@ int main(int argc, char *argv[]) {
                 // If last meaningful packet ACKed then set last frame to signoff
                 for(short i = 0; i < WINDOW_SIZE; i++)
                 {
-                    window[i].last = 1;
-                    window[i].signoff = 1;
+                    window[i]->last = 1;
+                    window[i]->signoff = 1;
                     // spam signoff packets to server
                     printf("Spam Signoff\n");
-                    sendto(send_sockfd, &window[i], sizeof(window[i]), 0,
+                    sendto(send_sockfd, window[i], sizeof(*window[i]), 0,
                         (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
                 }
             }
@@ -170,7 +172,7 @@ int main(int argc, char *argv[]) {
             printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
         } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
             // Timeout occurred
-            if (window[0].last && window[0].signoff) {
+            if (window[0]->last && window[0]->signoff) {
                 break;
             } else {
                 printf("Timeout occurred, resending packets starting from: %d\n", base);

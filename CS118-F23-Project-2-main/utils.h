@@ -111,7 +111,7 @@ int assign_range(circular_queue* q, struct packet* window[WINDOW_SIZE])
     for(frame_size; frame_size < WINDOW_SIZE; frame_size++)
     {
         //Assign address of master queue packet to window array
-        window[frame_size] = &(q->queue[(q->head + frame_size) % QUEUE_SIZE])
+        window[frame_size] = &(q->queue[(q->head + frame_size) % QUEUE_SIZE]);
         if(q->queue[(q->head + frame_size) % QUEUE_SIZE].last)
             break;
     }
