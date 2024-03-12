@@ -18,11 +18,14 @@ int main(int argc, char *argv[]) {
     short last_seq_num = 0;
     short ack_num = 0;
     char last = 0;
+    char last_packet = 0;
     char ack = 0;
     short next_seq_num = 0;
+    short sent_seq_num = 0;
     short base = 0;
-    struct packet window[WINDOW_SIZE];
+    struct packet window[WINDOW_SIZE]; //make this a pointer
     int total_bytes_sent = 0;
+    circular_queue master_queue; //make this the actual data
     
     // read filename from command line argument
     if (argc != 2) {
@@ -86,17 +89,21 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 250000;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
+    // Initialize master_queue
+    master_queue.head = 0;
+    master_queue.tail = 0;
+    master_queue.num_entries = 0;
 
-    while (!feof(fp)) {
-        // Create and send window
-        while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
-            // Read data from file
+    while (1) {
+        
+        // Populate master queue
+        while (!queue_full(&master_queue) && !feof(fp))
+        {
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
             if (bytes_read == 0) {
                 if (feof(fp)) {
-                    last = 1;
+                    last_packet = 1;
                     last_seq_num = next_seq_num;
-
                 } else {
                     perror("Error reading from file");
                     break;
@@ -104,76 +111,77 @@ int main(int argc, char *argv[]) {
             }
             if (bytes_read < PAYLOAD_SIZE) {
                 if (feof(fp)) {
-                    last = 1;
+                    last_packet = 1;
                     last_seq_num = next_seq_num;
                 }
             }
             total_bytes_sent += bytes_read;
-            // Create packet and add it to the sending window
-            build_packet(&window[next_seq_num % WINDOW_SIZE], next_seq_num, ack_num, last, ack, bytes_read, buffer);
+            // Create packet and add it to the master queue
+            build_packet(&(master_queue.queue[master_queue.tail]), next_seq_num, ack_num, last_packet, ack, bytes_read, buffer);
+            enqueue(&master_queue);
             printf("Packet %d created\n", next_seq_num);
-            // Send the packet
-            sendto(send_sockfd, &window[next_seq_num % WINDOW_SIZE], sizeof(window[next_seq_num % WINDOW_SIZE]), 0,
-                (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-            printf("Packet %d sent\n", next_seq_num);
-            // Increment sequence number for the next packet
-            usleep(100000);
             next_seq_num++;
         }
-        
-        // Receive Acknowledgement and send final window/signoff
-        do{
-            int bytes_read_from_socket = 0;
-            bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
 
-            if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
-                // Acknowledgment received
-                printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
-                if(ack_pkt.last)
-                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * PAYLOAD_SIZE - ack_pkt.length);
-                else
-                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
-                base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
-                next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
-                printf("Base: %d\n", base);
-                printf("Last: %d\n", last);
-                if(last && ack_pkt.acknum == last_seq_num)
+
+
+        // Create and send window
+        while (sent_seq_num < base + WINDOW_SIZE  && !last) {
+            // Point window to the head of the master_queue
+            window = master_queue.queue[master_queue.head];
+            // Send the packet
+            sendto(send_sockfd, &window[sent_seq_num % WINDOW_SIZE], sizeof(window[sent_seq_num % WINDOW_SIZE]), 0,
+                (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+            printf("Packet %d sent\n", sent_seq_num);
+            // Increment sequence number for the next packet
+            usleep(100000);
+            sent_seq_num++;
+        }
+    
+        // Receive Acknowledgement  and send window/signoff
+        int bytes_read_from_socket = 0;
+        bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+
+        if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
+            // Acknowledgment received
+            printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
+            //TODO: ADD CODE TO DEQUEUE ACKED PACKETS
+            for(int j = 0; j < (ack_pkt.acknum - base); j++)
+                dequeue(&master_queue);
+            base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
+            printf("Base: %d\n", base);
+            printf("Last: %d\n", last);
+            if(ack_pkt.acknum == last_seq_num)
+            {
+                last = 1;
+                // If last meaningful packet ACKed then set last frame to signoff
+                for(short i = 0; i < WINDOW_SIZE; i++)
                 {
-                    // If last meaningful packet ACKed then set last frame to signoff
-                    for(short i = 0; i < WINDOW_SIZE; i++)
-                    {
-                        window[i].last = 1;
-                        window[i].signoff = 1;
-                        // spam signoff packets to server
-                         printf("Spam Signoff\n");
-                        sendto(send_sockfd, &window[i], sizeof(window[i]), 0,
-                            (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-                    }
+                    window[i].last = 1;
+                    window[i].signoff = 1;
+                    // spam signoff packets to server
+                    printf("Spam Signoff\n");
+                    sendto(send_sockfd, &window[i], sizeof(window[i]), 0,
+                        (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
                 }
-                    
-            } else if (bytes_read_from_socket > 0) {
-                printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
-            } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
-                // Timeout occurred
-                if (window[0].last && window[0].signoff) {
-                    break;
-                } else if(last) {
-                    // Send last frame of packets
-                    for(short idx = (WINDOW_SIZE + base - next_seq_num); idx < WINDOW_SIZE; idx++)
-                        sendto(send_sockfd, &window[idx], sizeof(window[idx]), 0,
-                            (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-                } else {
-                    printf("Timeout occurred, resending packets starting from: %d\n", base);
-                    fseek(fp, -total_bytes_sent, SEEK_CUR);
-                    total_bytes_sent = 0;
-                    next_seq_num = base;
-                }
-            } else {
-                // Error occurred
-                perror("recvfrom");
-                // Handle error
             }
-        }while(last);
+                
+        } else if (bytes_read_from_socket > 0) {
+            printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
+            // Timeout occurred
+            if (window[0].last && window[0].signoff) {
+                break;
+            } else {
+                printf("Timeout occurred, resending packets starting from: %d\n", base);
+                total_bytes_sent = 0;
+                sent_seq_num = base;
+            }
+        } else {
+            // Error occurred
+            perror("recvfrom");
+            // Handle error
+        }
     }
     
     printf("File sent successfully.\n");

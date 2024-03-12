@@ -74,13 +74,20 @@ bool queue_full(circular_queue *q)
     return (q->num_entries == QUEUE_SIZE);
 }
 
-bool enqueue(circular_queue *q, struct packet* pkt)
+
+bool packet_in_queue(circular_queue *q, short seqnum)
+{
+    return ((seqnum >= q->queue[q->head].seqnum)&&(seqnum < q->queue[q->tail].seqnum));
+}
+
+//only does variable adjustment, enqueueing done with build_packet()
+bool enqueue(circular_queue *q)
 {
     //check if q is full
     if(queue_full(q))
         return false;
 
-    q->queue[q->tail] = *pkt;
+    //q->queue[q->tail] = *pkt;
     q->num_entries++;
     q->tail = (q->tail + 1) % QUEUE_SIZE;
 
@@ -96,13 +103,4 @@ bool dequeue(circular_queue *q)
     q->num_entries--;
     return true;
 }
-
-
-
-
-
-
-
-
-
 #endif
