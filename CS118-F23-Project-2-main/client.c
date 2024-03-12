@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     short next_seq_num = 0;
     short sent_seq_num = 0;
     short base = 0;
-    struct packet window[WINDOW_SIZE]; //make this a pointer
+    struct packet* window[WINDOW_SIZE]; //make this a pointer
     int total_bytes_sent = 0;
     circular_queue master_queue; //make this the actual data
     
@@ -128,9 +128,9 @@ int main(int argc, char *argv[]) {
         // Create and send window
         while (sent_seq_num < base + WINDOW_SIZE  && !last) {
             // Point window to the head of the master_queue
-            window = master_queue.queue[master_queue.head];
+            int frame_size = assign_range(&master_queue, window)
             // Send the packet
-            sendto(send_sockfd, &window[sent_seq_num % WINDOW_SIZE], sizeof(window[sent_seq_num % WINDOW_SIZE]), 0,
+            sendto(send_sockfd, &window[sent_seq_num % frame_size], sizeof(window[sent_seq_num % frame_size]), 0,
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
             // Increment sequence number for the next packet
