@@ -64,17 +64,17 @@ void printSend(struct packet* pkt, int resend) {
 
 // Utility functions for circular queue
 
-bool queue_empty(circular_queue &q)
+bool queue_empty(circular_queue *q)
 {
     return (q->num_entries == 0);
 }
 
-bool queue_full(circular_queue &q)
+bool queue_full(circular_queue *q)
 {
     return (q->num_entries == QUEUE_SIZE);
 }
 
-bool enqueue(circular_queue &q, struct packet* pkt)
+bool enqueue(circular_queue *q, struct packet* pkt)
 {
     //check if q is full
     if(queue_full(q))
@@ -87,13 +87,14 @@ bool enqueue(circular_queue &q, struct packet* pkt)
     return true;
 }
 
-bool dequeue(circular_queue &q)
+bool dequeue(circular_queue *q)
 {
     if(queue_empty(q))
         return false;
 
-    q->head = (q->head + 1) % QUEUE_SIZE:
+    q->head = (q->head + 1) % QUEUE_SIZE;
     q->num_entries--;
+    return true;
 }
 
 
