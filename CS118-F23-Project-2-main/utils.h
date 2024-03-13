@@ -87,7 +87,6 @@ bool enqueue(circular_queue *q)
     if(queue_full(q))
         return false;
 
-    //q->queue[q->tail] = *pkt;
     q->num_entries++;
     q->tail = (q->tail + 1) % QUEUE_SIZE;
 
@@ -107,12 +106,12 @@ bool dequeue(circular_queue *q)
 
 int assign_range(circular_queue* q, struct packet* window[WINDOW_SIZE])
 {
-    int frame_size = 0;
-    for(frame_size; frame_size < WINDOW_SIZE; frame_size++)
+    int frame_size;
+    for(frame_size = 0; frame_size < WINDOW_SIZE; frame_size++)
     {
         //Assign address of master queue packet to window array
         window[frame_size] = &(q->queue[(q->head + frame_size) % QUEUE_SIZE]);
-        if(q->queue[(q->head + frame_size) % QUEUE_SIZE].last)
+        if(&(q->queue[(q->head + frame_size) % QUEUE_SIZE]) == &(q->queue[q->tail]))
             break;
     }
     return frame_size;

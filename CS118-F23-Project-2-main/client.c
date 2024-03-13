@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
     struct packet* window[WINDOW_SIZE]; //make this a pointer
     int total_bytes_sent = 0;
     circular_queue master_queue; //make this the actual data
+    int frame_size = 0; // frame_size <= WINDOW_SIZE
     
     // read filename from command line argument
     if (argc != 2) {
@@ -127,13 +128,15 @@ int main(int argc, char *argv[]) {
 
         // Create and send window
         // Point window to the head of the master_queue
-        int frame_size = assign_range(&master_queue, window);
-        while (sent_seq_num < base + frame_size  && !last) {
+
+        if(!last)
+            frame_size = assign_range(&master_queue, window);
+        sent_seq_num = base;
+        while ((sent_seq_num < base + frame_size)  && (!last)) {
             // Send the packet
             sendto(send_sockfd, window[sent_seq_num % frame_size], sizeof(*window[sent_seq_num % frame_size]), 0,
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
-            printRecv(struct packet* pkt);
             // Increment sequence number for the next packet
             usleep(100000);
             
@@ -148,8 +151,10 @@ int main(int argc, char *argv[]) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
             //TODO: ADD CODE TO DEQUEUE ACKED PACKETS
-            for(int j = 0; j < (ack_pkt.acknum - base); j++)
+            for(short j = 0; j < (ack_pkt.acknum - base + 1); j++)
+            {
                 dequeue(&master_queue);
+            }
             base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
             printf("Base: %d\n", base);
             printf("Last: %d\n", last);
@@ -157,13 +162,13 @@ int main(int argc, char *argv[]) {
             {
                 last = 1;
                 // If last meaningful packet ACKed then set last frame to signoff
+                window[0]->last = 1;
+                window[0]->signoff = 1;
                 for(short i = 0; i < WINDOW_SIZE; i++)
                 {
-                    window[i]->last = 1;
-                    window[i]->signoff = 1;
                     // spam signoff packets to server
                     printf("Spam Signoff\n");
-                    sendto(send_sockfd, window[i], sizeof(*window[i]), 0,
+                    sendto(send_sockfd, window[0], sizeof(*window[0]), 0,
                         (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
                 }
             }
@@ -177,7 +182,6 @@ int main(int argc, char *argv[]) {
             } else {
                 printf("Timeout occurred, resending packets starting from: %d\n", base);
                 total_bytes_sent = 0;
-                sent_seq_num = base;
             }
         } else {
             // Error occurred

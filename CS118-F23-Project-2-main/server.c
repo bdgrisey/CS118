@@ -83,7 +83,7 @@ int main() {
         } else {
             // Write payload to file
             fwrite(buffer.payload, 1, buffer.length, fp);
-            printf("Payload written\n");
+            printf("Payload written: %d\n", buffer.seqnum);
 
             // Update expected sequence number
             expected_seq_num++;
