@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     struct packet pkt;
     struct packet ack_pkt;
     char buffer[PAYLOAD_SIZE];
-    short last_seq_num = 0;
+    short last_seq_num = -1;
     short ack_num = 0;
     char last = 0;
     char last_packet = 0;

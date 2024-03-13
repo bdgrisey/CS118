@@ -13,10 +13,10 @@
 #define SERVER_PORT 6002
 #define CLIENT_PORT_TO 5001
 #define PAYLOAD_SIZE 1024
-#define WINDOW_SIZE 5
+#define WINDOW_SIZE 3
 #define TIMEOUT 2
 #define MAX_SEQUENCE 1024
-#define QUEUE_SIZE 100
+#define QUEUE_SIZE 10
 
 
 
@@ -111,7 +111,7 @@ int assign_range(circular_queue* q, struct packet* window[WINDOW_SIZE])
     {
         //Assign address of master queue packet to window array
         window[frame_size] = &(q->queue[(q->head + frame_size) % QUEUE_SIZE]);
-        if(&(q->queue[(q->head + frame_size) % QUEUE_SIZE]) == &(q->queue[q->tail]))
+        if((&(q->queue[(q->head + frame_size) % QUEUE_SIZE]) == &(q->queue[q->tail])) && !queue_full(q))
             break;
     }
     return frame_size;
