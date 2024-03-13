@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
             // Increment sequence number for the next packet
-            usleep(100000);
+            /usleep(1000);
             
             sent_seq_num++;
         }
