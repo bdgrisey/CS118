@@ -175,6 +175,16 @@ int main(int argc, char *argv[]) {
                 
         } else if (bytes_read_from_socket > 0) {
             printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
+            if(last)
+            {
+                for(short i = 0; i < WINDOW_SIZE; i++)
+                {
+                    // spam signoff packets to server until no response
+                    printf("Spam Signoff\n");
+                    sendto(send_sockfd, window[0], sizeof(*window[0]), 0,
+                        (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+                }
+            }
         } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
             // Timeout occurred
             if (window[0]->last && window[0]->signoff) {
