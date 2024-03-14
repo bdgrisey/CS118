@@ -17,6 +17,7 @@ int main() {
     int recv_len;
     struct packet ack_pkt;
     struct timeval tv;
+    struct packet last_successful_packet;
 
     // Create a UDP socket for sending
     send_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -75,6 +76,8 @@ int main() {
         if (buffer.seqnum != expected_seq_num) {
             // Packet with unexpected sequence number, send ACK for previous packet
             ack_pkt.acknum = expected_seq_num - 1;
+            ack_pkt.position_before_reading = last_successful_packet.position_before_reading;
+            ack_pkt.position_after_reading = last_successful_packet.position_after_reading;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("buffer.seqnum: %d\n", buffer.seqnum);
             printf("expected_seq_num: %d\n", expected_seq_num);
@@ -85,12 +88,17 @@ int main() {
             fwrite(buffer.payload, 1, buffer.length, fp);
             printf("Payload written\n");
 
+            // Save this packet
+            last_successful_packet = buffer;
+
             // Update expected sequence number
             expected_seq_num++;
 
             // Send acknowledgement for the received packet
             ack_pkt.acknum = buffer.seqnum;
             ack_pkt.last = buffer.last;
+            ack_pkt.position_before_reading = buffer.position_before_reading;
+            ack_pkt.position_after_reading = buffer.position_after_reading;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
             printf("Ack sent for current packet\n");
 

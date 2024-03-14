@@ -23,6 +23,8 @@ int main(int argc, char *argv[]) {
     short base = 0;
     struct packet window[WINDOW_SIZE];
     int total_bytes_sent = 0;
+    long int position_before_reading = 0;
+    long int position_after_reading = 0;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -91,7 +93,9 @@ int main(int argc, char *argv[]) {
         // Create and send window
         while (next_seq_num < base + WINDOW_SIZE && !feof(fp)) {
             // Read data from file
+            position_before_reading = ftell(fp);
             size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
+            position_after_reading = ftell(fp);
             if (bytes_read == 0) {
                 if (feof(fp)) {
                     last = 1;
@@ -108,9 +112,9 @@ int main(int argc, char *argv[]) {
                     last_seq_num = next_seq_num;
                 }
             }
-            total_bytes_sent += bytes_read;
+            // total_bytes_sent += bytes_read;
             // Create packet and add it to the sending window
-            build_packet(&window[next_seq_num % WINDOW_SIZE], next_seq_num, ack_num, last, ack, bytes_read, buffer);
+            build_packet(&window[next_seq_num % WINDOW_SIZE], next_seq_num, ack_num, last, ack, bytes_read, buffer, position_before_reading, position_after_reading);
             printf("Packet %d created\n", next_seq_num);
             // Send the packet
             sendto(send_sockfd, &window[next_seq_num % WINDOW_SIZE], sizeof(window[next_seq_num % WINDOW_SIZE]), 0,
@@ -129,10 +133,10 @@ int main(int argc, char *argv[]) {
             if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
                 // Acknowledgment received
                 printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
-                if(ack_pkt.last)
-                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * PAYLOAD_SIZE - ack_pkt.length);
-                else
-                    total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
+                // if(ack_pkt.last)
+                //     total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base) * PAYLOAD_SIZE - ack_pkt.length);
+                // else
+                //     total_bytes_sent = total_bytes_sent - ((ack_pkt.acknum - base + 1) * PAYLOAD_SIZE);
                 base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
                 next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
                 printf("Base: %d\n", base);
@@ -164,7 +168,8 @@ int main(int argc, char *argv[]) {
                             (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
                 } else {
                     printf("Timeout occurred, resending packets starting from: %d\n", base);
-                    fseek(fp, -total_bytes_sent, SEEK_CUR);
+                    //fseek(fp, -total_bytes_sent, SEEK_CUR);
+                    fseek(fp, window[base % WINDOW_SIZE].position_before_reading, SEEK_SET);
                     total_bytes_sent = 0;
                     next_seq_num = base;
                 }
