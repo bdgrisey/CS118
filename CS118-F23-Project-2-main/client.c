@@ -154,12 +154,13 @@ int main(int argc, char *argv[]) {
             // Acknowledgment received
             printf("Acknowledgment received for sequence number %d\n", ack_pkt.acknum);
             //TODO: ADD CODE TO DEQUEUE ACKED PACKETS
-            for(short j = 0; j < (ack_pkt.acknum - base + 1); j++)
+            int acked_range = (ack_pkt.acknum - base + 1);
+            for(short j = 0; j < acked_range; j++)
             {
                 dequeue(&master_queue);
             }
-            base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
-            current_window = (current_window < MAX_WINDOW_SIZE) ? current_window+1 : current_window; // Additive Increase to window
+            base += acked_range; // Update sequence number for next packet
+            current_window = (current_window + acked_range< MAX_WINDOW_SIZE) ? current_window+acked_range : MAX_WINDOW_SIZE; // Additive Increase to window
             dup_ack_cnt = 0; // restart counter for duplicate acks
             printf("Base: %d\n", base);
             printf("Last: %d\n", last);
@@ -186,6 +187,7 @@ int main(int argc, char *argv[]) {
                 // Multiplicative decrease
                 current_window = (current_window/2 > 0) ? current_window/2 : 1;
                 dup_ack_cnt = 0;
+                //perhaps max the window size
             }
             if(last)
             {

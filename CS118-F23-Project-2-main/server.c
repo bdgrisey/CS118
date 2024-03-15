@@ -72,7 +72,7 @@ int main() {
             break;
 
         // Check if packet has the expected sequence number
-        if (buffer.seqnum != expected_seq_num) {
+        if (buffer.seqnum > expected_seq_num) {
             // Packet with unexpected sequence number, send ACK for previous packet
             ack_pkt.acknum = expected_seq_num - 1;
             sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, sizeof(client_addr_to));
@@ -80,7 +80,7 @@ int main() {
             printf("expected_seq_num: %d\n", expected_seq_num);
             //printf("expected data:  %s\n", buffer.payload);
             printf("Ack sent for previous packet\n");
-        } else {
+        } else if(buffer.seqnum == expected_seq_num) {
             // Write payload to file
             fwrite(buffer.payload, 1, buffer.length, fp);
             printf("Payload written: %d\n", buffer.seqnum);
