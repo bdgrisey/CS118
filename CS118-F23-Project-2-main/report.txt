@@ -1,2 +1,15 @@
 Please concisely describe your congestion control scheme here.
 No need to be verbose, brief descriptions/bullet points are preferred.
+
+
+The congestion control scheme we used was GBN with a variable window size 
+set according to AIMD. Since we were using the GBN algorithm when a window
+was sent out we would expect a number of ACKs for both the correct sequence 
+numbers and for duplicate packets. When the client received a good ACK from
+the server this would increase the sending window by one hence the additive 
+increase of AIMD. This window size would only increase up to a MAX_WINDOW_SIZE
+defined in utils.h. In the case that three duplicate ACKs were received on the 
+client end this would signal to the client that it is sending too many packets
+for the link bandwidth. If this case ws reached then the current window size would 
+be cut in half with the minimum window size being one packet. This in turn implemented
+the multiplicative decrease of AIMD. 
