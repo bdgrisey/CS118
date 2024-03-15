@@ -18,7 +18,6 @@
 #define MAX_SEQUENCE 1024
 #define QUEUE_SIZE 10
 
-extern int current_window; 
 
 // Packet Layout
 // You may change this if you want to
@@ -104,7 +103,7 @@ bool dequeue(circular_queue *q)
 }
 
 
-int assign_range(circular_queue* q, struct packet* window[MAX_WINDOW_SIZE])
+int assign_range(circular_queue* q, struct packet* window[MAX_WINDOW_SIZE], int current_window)
 {
     int frame_size;
     for(frame_size = 0; frame_size < current_window; frame_size++)

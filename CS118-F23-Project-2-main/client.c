@@ -7,8 +7,7 @@
 #include <errno.h>
 #include "utils.h"
 
-// Extern defined global
-int current_window = 3;
+
 
 int main(int argc, char *argv[]) {
     int listen_sockfd, send_sockfd;
@@ -30,6 +29,7 @@ int main(int argc, char *argv[]) {
     int total_bytes_sent = 0;
     circular_queue master_queue; //make this the actual data
     int frame_size = 0; // frame_size <= WINDOW_SIZE
+    int current_window = 3;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
         // Point window to the head of the master_queue
 
         if(!last)
-            frame_size = assign_range(&master_queue, window);
+            frame_size = assign_range(&master_queue, window, current_window);
         sent_seq_num = base;
         while ((sent_seq_num < base + frame_size)  && (!last)) {
             // Send the packet
