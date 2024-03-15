@@ -29,7 +29,9 @@ int main(int argc, char *argv[]) {
     int total_bytes_sent = 0;
     circular_queue master_queue; //make this the actual data
     int frame_size = 0; // frame_size <= WINDOW_SIZE
+    //AIMD VARS
     int current_window = 3;
+    int dup_ack_cnt = 0;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -131,7 +133,6 @@ int main(int argc, char *argv[]) {
 
         // Create and send window
         // Point window to the head of the master_queue
-
         if(!last)
             frame_size = assign_range(&master_queue, window, current_window);
         sent_seq_num = base;
@@ -158,6 +159,8 @@ int main(int argc, char *argv[]) {
                 dequeue(&master_queue);
             }
             base += (ack_pkt.acknum - base) + 1; // Update sequence number for next packet
+            current_window = (current_window < MAX_WINDOW_SIZE) ? current_window+1 : current_window; // Additive Increase to window
+            dup_ack_cnt = 0; // restart counter for duplicate acks
             printf("Base: %d\n", base);
             printf("Last: %d\n", last);
             if(ack_pkt.acknum == last_seq_num)
@@ -177,6 +180,13 @@ int main(int argc, char *argv[]) {
                 
         } else if (bytes_read_from_socket > 0) {
             printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
+            dup_ack_cnt++;
+            if(dup_ack_cnt >= 3)
+            {
+                // Multiplicative decrease
+                current_window = (current_window/2 > 0) ? current_window/2 : 1;
+                dup_ack_cnt = 0;
+            }
             if(last)
             {
                 for(short i = 0; i < TIMEOUT; i++)
