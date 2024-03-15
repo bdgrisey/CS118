@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     // Otherwise, resend the packet
 
     tv.tv_sec = 0;
-    tv.tv_usec = 250000;
+    tv.tv_usec = 500000;
     setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
     // Initialize master_queue
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
             // Increment sequence number for the next packet
-            usleep(100000);
+            usleep(100);
             sent_seq_num++;
         }
     
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
                 dequeue(&master_queue);
             }
             base += acked_range; // Update sequence number for next packet
-            current_window = (current_window + acked_range< MAX_WINDOW_SIZE) ? current_window+acked_range : MAX_WINDOW_SIZE; // Additive Increase to window
+            current_window = (current_window < MAX_WINDOW_SIZE) ? current_window+1 : current_window; // Additive Increase to window
             dup_ack_cnt = 0; // restart counter for duplicate acks
             printf("Base: %d\n", base);
             printf("Last: %d\n", last);

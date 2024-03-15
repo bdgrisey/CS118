@@ -16,7 +16,7 @@
 #define MAX_WINDOW_SIZE 10
 #define TIMEOUT 5
 #define MAX_SEQUENCE 1024
-#define QUEUE_SIZE 10
+#define QUEUE_SIZE 20
 
 
 // Packet Layout
