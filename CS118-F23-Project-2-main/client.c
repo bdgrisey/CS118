@@ -19,6 +19,11 @@ int main(int argc, char *argv[]) {
     unsigned short ack_num = 0;
     char last = 0;
     char ack = 0;
+    long int position_before_reading = 0;
+    long int position_after_reading = 0;
+    int variable_window_size = 5;
+    char signoff = 0;
+    struct packet base_pkt;
     
     // read filename from command line argument
     if (argc != 2) {
@@ -84,56 +89,70 @@ int main(int argc, char *argv[]) {
 
     while (!feof(fp)) {
         // Read data from file
-        size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
-        if (bytes_read == 0) {
-            if (feof(fp))
-                last = 1;
-            else {
-                perror("Error reading from file");
-                break;
-            }
-        }
-        if (bytes_read < PAYLOAD_SIZE) {
-            if (feof(fp)) {
-                last = 1;
-            }
-        }
+        while (next_seq_num < base + variable_window_size && !feof(fp)) {
+            // Read data from file
+            position_before_reading = ftell(fp);
+            size_t bytes_read = fread(buffer, 1, PAYLOAD_SIZE, fp);
+            position_after_reading = ftell(fp);
+            if (bytes_read == 0) {
+                if (feof(fp)) {
+                    last = 1;
+                    last_seq_num = next_seq_num;
 
-        // Create packet
-        build_packet(&pkt, seq_num, ack_num, last, ack, bytes_read, buffer);
-        printf("Packet created\n");
-        
-        // Sending of packet (with timeout)
-        while (1) {
-            // Send packet
-            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
-            printf("Packet sent\n");
-            
-            int bytes_read_from_socket = 0;
-            // Receive acknowledgment
-            bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
-            if (bytes_read_from_socket > 0 && ack_pkt.acknum == seq_num) {
-                // Acknowledgment received
-                printf("Acknowledgment received for sequence number %d\n", seq_num);
-                seq_num++; // Update sequence number for next packet
-                if(!pkt.last)
-                    break;
-                else
-                    pkt.signoff = 1;
-            } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
-                // Timeout occurred
-                if (pkt.last && pkt.signoff) {
-                    break;
                 } else {
-                    printf("Timeout occurred, resending packet\n");
+                    perror("Error reading from file");
+                    break;
                 }
-            } else if (ack_pkt.acknum != seq_num) {
-                printf("Invalid acknowledgement received\n");
-            } else {
-                // Error occurred
-                perror("recvfrom");
-                // Handle error
             }
+            if (bytes_read < PAYLOAD_SIZE) {
+                if (feof(fp)) {
+                    last = 1;
+                    last_seq_num = next_seq_num;
+                }
+            }
+            // total_bytes_sent += bytes_read;
+            // Create packet and add it to the sending window
+            build_packet(&pkt, next_seq_num, ack_num, last, ack, bytes_read, buffer, position_before_reading, position_after_reading, signoff);
+            if (next_seq_num == base) {
+                base_pkt = pkt;
+            }
+            printf("Packet %d created\n", next_seq_num);
+            // Send the packet
+            sendto(send_sockfd, &pkt, sizeof(pkt), 0,
+                (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+            printf("Packet %d sent\n", next_seq_num);
+            // Increment sequence number for the next packet
+            usleep(100000);
+            next_seq_num++;
+        }
+        
+        int bytes_read_from_socket = 0;
+        // Receive acknowledgment
+        bytes_read_from_socket = recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, NULL, NULL);
+        if (bytes_read_from_socket > 0 && ack_pkt.acknum >= base) {
+            // Acknowledgment received
+            printf("Acknowledgment received for sequence number %d\n", seq_num);
+            base += (ack_pkt.acknum - base) + 1;
+            next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
+            if (ack_pkt.last) {
+                signoff = 1;
+                // spam signoff packets
+                while (1) {
+                    pkt.signoff = 1;
+                    sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
+                    usleep(10000);
+                }
+            }
+        } else if (bytes_read_from_socket > 0) {
+            printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
+            // Timeout occurred
+            printf("Timeout occurred, resending packet\n");
+            fseek(fp, base_pkt.position_before_reading, SEEK_SET);
+        } else {
+            // Error occurred
+            perror("recvfrom");
+            // Handle error
         }
     }
     fclose(fp);

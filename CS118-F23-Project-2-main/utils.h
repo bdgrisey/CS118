@@ -21,23 +21,27 @@
 // Packet Layout
 // You may change this if you want to
 struct packet {
-    unsigned short seqnum;
-    unsigned short acknum;
+    short seqnum;
+    short acknum;
     char ack;
     char last;
     char signoff;
     unsigned int length;
     char payload[PAYLOAD_SIZE];
+    long int position_before_reading;
+    long int position_after_reading;
 };
 
 // Utility function to build a packet
-void build_packet(struct packet* pkt, unsigned short seqnum, unsigned short acknum, char last, char ack,unsigned int length, const char* payload) {
+void build_packet(struct packet* pkt, short seqnum, short acknum, char last, char ack,unsigned int length, const char* payload, long int position_before_reading, long int position_after_reading, char signoff) {
     pkt->seqnum = seqnum;
     pkt->acknum = acknum;
     pkt->ack = ack;
     pkt->last = last;
-    pkt->signoff = 0;
+    pkt->signoff = signoff;
     pkt->length = length;
+    pkt->position_before_reading = position_before_reading;
+    pkt->position_after_reading = position_after_reading;
     memcpy(pkt->payload, payload, length);
 }
 
