@@ -24,6 +24,10 @@ int main(int argc, char *argv[]) {
     int variable_window_size = 5;
     char signoff = 0;
     struct packet base_pkt;
+    int base = 0;
+    int next_seq_num = 0;
+    int last_seq_num = 0;
+
     
     // read filename from command line argument
     if (argc != 2) {
@@ -114,7 +118,7 @@ int main(int argc, char *argv[]) {
             // Create packet and add it to the sending window
             build_packet(&pkt, next_seq_num, ack_num, last, ack, bytes_read, buffer, position_before_reading, position_after_reading, signoff);
             if (next_seq_num == base) {
-                base_pkt = pkt;
+                build_packet(&base_pkt, next_seq_num, ack_num, last, ack, bytes_read, buffer, position_before_reading, position_after_reading, signoff);
             }
             printf("Packet %d created\n", next_seq_num);
             // Send the packet
@@ -134,7 +138,7 @@ int main(int argc, char *argv[]) {
             printf("Acknowledgment received for sequence number %d\n", seq_num);
             base += (ack_pkt.acknum - base) + 1;
             next_seq_num = (last) ? next_seq_num+1 : next_seq_num;
-            if (ack_pkt.last) {
+            if (ack_pkt.last && ack_pkt.acknum == last_seq_num) {
                 signoff = 1;
                 // spam signoff packets
                 while (1) {
@@ -145,10 +149,11 @@ int main(int argc, char *argv[]) {
             }
         } else if (bytes_read_from_socket > 0) {
             printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read <= 0) {
+        } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
             // Timeout occurred
             printf("Timeout occurred, resending packet\n");
             fseek(fp, base_pkt.position_before_reading, SEEK_SET);
+            next_seq_num = base;
         } else {
             // Error occurred
             perror("recvfrom");
