@@ -202,6 +202,7 @@ int main(int argc, char *argv[]) {
         } else if (errno == EAGAIN || errno == EWOULDBLOCK || bytes_read_from_socket <= 0) {
             // Timeout occurred
             if (window[0]->last && window[0]->signoff) {
+                sleep(2);
                 break;
             } else {
                 printf("Timeout occurred, resending packets starting from: %d\n", base);
