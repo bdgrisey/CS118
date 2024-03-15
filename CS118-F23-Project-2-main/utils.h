@@ -13,12 +13,12 @@
 #define SERVER_PORT 6002
 #define CLIENT_PORT_TO 5001
 #define PAYLOAD_SIZE 1024
-#define WINDOW_SIZE 3
+#define MAX_WINDOW_SIZE 10
 #define TIMEOUT 5
 #define MAX_SEQUENCE 1024
 #define QUEUE_SIZE 10
 
-
+extern int current_window; 
 
 // Packet Layout
 // You may change this if you want to
@@ -104,10 +104,10 @@ bool dequeue(circular_queue *q)
 }
 
 
-int assign_range(circular_queue* q, struct packet* window[WINDOW_SIZE])
+int assign_range(circular_queue* q, struct packet* window[MAX_WINDOW_SIZE])
 {
     int frame_size;
-    for(frame_size = 0; frame_size < WINDOW_SIZE; frame_size++)
+    for(frame_size = 0; frame_size < current_window; frame_size++)
     {
         //Assign address of master queue packet to window array
         window[frame_size] = &(q->queue[(q->head + frame_size) % QUEUE_SIZE]);

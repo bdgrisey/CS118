@@ -7,6 +7,9 @@
 #include <errno.h>
 #include "utils.h"
 
+// Extern defined global
+int current_window = 3;
+
 int main(int argc, char *argv[]) {
     int listen_sockfd, send_sockfd;
     struct sockaddr_in client_addr, server_addr_to, server_addr_from;
@@ -23,7 +26,7 @@ int main(int argc, char *argv[]) {
     short next_seq_num = 0;
     short sent_seq_num = 0;
     short base = 0;
-    struct packet* window[WINDOW_SIZE]; //make this a pointer
+    struct packet* window[MAX_WINDOW_SIZE]; //make this a pointer
     int total_bytes_sent = 0;
     circular_queue master_queue; //make this the actual data
     int frame_size = 0; // frame_size <= WINDOW_SIZE
