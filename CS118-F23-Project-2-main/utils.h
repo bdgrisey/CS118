@@ -14,7 +14,7 @@
 #define CLIENT_PORT_TO 5001
 #define PAYLOAD_SIZE 1024
 #define WINDOW_SIZE 3
-#define TIMEOUT 2
+#define TIMEOUT 5
 #define MAX_SEQUENCE 1024
 #define QUEUE_SIZE 10
 

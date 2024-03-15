@@ -138,8 +138,7 @@ int main(int argc, char *argv[]) {
                 (struct sockaddr *)&server_addr_to, sizeof(server_addr_to));
             printf("Packet %d sent\n", sent_seq_num);
             // Increment sequence number for the next packet
-            /usleep(1000);
-            
+            usleep(100000);
             sent_seq_num++;
         }
     
@@ -164,7 +163,7 @@ int main(int argc, char *argv[]) {
                 // If last meaningful packet ACKed then set last frame to signoff
                 window[0]->last = 1;
                 window[0]->signoff = 1;
-                for(short i = 0; i < WINDOW_SIZE; i++)
+                for(short i = 0; i < TIMEOUT; i++)
                 {
                     // spam signoff packets to server
                     printf("Spam Signoff\n");
@@ -177,7 +176,7 @@ int main(int argc, char *argv[]) {
             printf("Cumulatively acknowledged sequence number %d\n", ack_pkt.acknum);
             if(last)
             {
-                for(short i = 0; i < WINDOW_SIZE; i++)
+                for(short i = 0; i < TIMEOUT; i++)
                 {
                     // spam signoff packets to server until no response
                     printf("Spam Signoff\n");
